@@ -56,7 +56,7 @@ def board_set(bd: tuple, i: int, j: int) -> tuple:
     """Return an updated tuple; an out-of-range row leaves bd unchanged."""
     if 0 <= i < N:
         return bd[:i] + (j,) + bd[i + 1:]
-    return bd
+    return bd # returns updated board
 
 
 def safety_test1(i0: int, j0: int, i: int, j: int) -> bool:
@@ -78,18 +78,18 @@ def search(bd: tuple, i: int, j: int, nsol: int) -> int:
     # Each iteration replaces one tail call without growing Python's stack.
     while True:
         if j < N:
-            if safety_test2(i, j, bd, i - 1):
+            if safety_test2(i, j, bd, i - 1): # if queen placed at (i0, j0) is safe from every queen from rows i-1 to 0
                 bd1 = board_set(bd, i, j)
-                if i + 1 == N:
+                if i + 1 == N: # Reached last row where queen is placed, return new solution
                     print(f"Solution #{nsol + 1}:\n")
                     print_board(bd1)
                     j += 1
                     nsol += 1
                 else:
-                    bd, i, j = bd1, i + 1, 0
+                    bd, i, j = bd1, i + 1, 0 # start queen on next row from 
             else:
                 j += 1
-        elif i > 0:
+        elif i > 0: # reached last candidate queen position in current row, need to backtrack previous queen
             i -= 1
             j = board_get(bd, i) + 1
         else:
