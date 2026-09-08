@@ -2,7 +2,7 @@ Set-Location $PSScriptRoot
 # Strip Windows carriage returns before passing commands to Bash.
 wsl -d Ubuntu -- bash -c ('
 set -e                                                      # stops execution upon nonzero exitcode
-patscc -o queens queens.dats                                # compile ats program
+patscc -o queens queens.dats                                # compile ats program to C then into an executable
 ./queens > queens-ats-output.txt
 echo "Saved ATS output" 
 python3 queens.py > queens-py-output.txt
