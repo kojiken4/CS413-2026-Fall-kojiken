@@ -1,5 +1,5 @@
 import unittest
-from queens import safety_test1, board_get
+from queens import board_get, safety_test1, search
 
 
 
@@ -26,6 +26,16 @@ class TestQueens(unittest.TestCase):
         bd = (0, 1, 2, 3, 4, 5, 6, 7)
         self.assertEqual(board_get(bd, 1), 1)
         self.assertEqual(board_get(bd, 6), 6)
+
+    # testing search algorithm producing all 92 unique solutions
+    def test_board_get_all_solutions(self):
+        bd = (0, 0, 0, 0, 0, 0, 0, 0)
+        self.assertEqual(search(bd, 0, 0, 0), 92)
+
+    # testing exhausted all solutions
+    def test_board_exhausted_all_solutions(self):
+        bd = (0, 0, 0, 0, 0, 0, 0, 0)
+        self.assertEqual(search(bd, 0, 8, 0), 0)
 
 
 if __name__ == "__main__":
