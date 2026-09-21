@@ -5,7 +5,7 @@
 Extend the LAMBDA0 interpreter with pairs and projections, then translate an
 ATS2 eight-queens solver into a LAMBDA0 term executed by the interpreter.
 
-## Current status: pair analysis, substitution, and evaluation
+## Current status: pair support complete; ATS2 reference established
 
 `lambda0.py` extends the starter's `t0erm_size` and `t0erm_fvset` with
 pair and projection cases. A pair counts as one node plus both children's
@@ -31,6 +31,10 @@ Twelve evaluation tests cover these rules, nested/mixed values, function calls,
 recursive-function values, and error propagation. The queens translation remains
 pending.
 
+Step 5 adds the unchanged ATS2 source, its captured output, and four reference
+tests in `TEST/test03_queens.py`. These tests check the ATS2 reference only;
+they do not yet compare it with a translated LAMBDA0 solver.
+
 The test file adds its parent directory (`MySolution`) to Python's import path,
 so it tests this directory's interpreter rather than the assignment starter.
 
@@ -46,6 +50,146 @@ python -B -m unittest discover -s TEST -p "test*.py" -v
 evaluation behavior, including arithmetic, functions, recursion, conditionals,
 evaluation order, error cases, and Church numerals (numbers encoded as functions).
 They provide a baseline for detecting regressions as the interpreter is extended.
+
+## ATS2 source and reproducible reference
+
+`queens.dats` is copied byte-for-byte from `assigns/01/MySolution/queens.dats`.
+Its header credits Hongwei Xi, January 2011, with the ATS2 port dated March 24,
+2013. The copyright and permission notice are preserved. Both local copies
+had this SHA-256 hash when the reference was captured:
+
+```text
+CD533C47C86593861AFECEC2A02732A06B4E14FF8667052B4358671B38C9605A
+```
+
+The source fixes N at eight. It prints an initial demonstration board with
+columns `(0, 1, 2, 3, 4, 5, 6, 7)`, then enumerates solutions and asserts that
+the count is 92. The demonstration board has diagonal conflicts and is NOT a
+solution. The test parser excludes it and retains solution discovery order.
+
+The unchanged copy was compiled and run using Ubuntu WSL's `patscc`, with exit
+code zero. `reference/queens-ats-output.txt` stores its actual stdout, including
+the demonstration board. Tests verified 92 distinct, valid solution boards:
+
+- First: `(0, 4, 7, 5, 2, 6, 1, 3)`.
+- Last: `(7, 3, 0, 2, 5, 1, 6, 4)`.
+
+To regenerate the reference from PowerShell in `assigns/02/MySolution`:
+
+```powershell
+wsl -d Ubuntu -- bash -c 'set -e; mkdir -p .ats-build reference; cd .ats-build; patscc -o queens ../queens.dats; ./queens > ../reference/queens-ats-output.txt'
+if ($LASTEXITCODE -ne 0) { throw "ATS2 reference generation failed" }
+python -B -m unittest discover -s TEST -p "test03_queens.py" -v
+```
+
+Compilation places the executable and generated C in `.ats-build/`, which is
+ignored by Git. Running the tests alone needs Python but does not require WSL
+or the ATS2 compiler. A fresh original-versus-translation comparison is still
+required once the translation exists.
+
+## Planned LAMBDA0 representations (not implemented yet)
+
+The notation `pair(a, b)`, `first(p)`, and `second(p)` below abbreviates
+`T0Mpair`, `T0Mpfst`, and `T0Mpsnd` expressions. Integers and booleans in these
+examples mean `T0Mint` and `T0Mbtf` nodes, not raw Python values in the AST.
+
+### 1. Boards: row positions stored in nested pairs
+
+Store eight columns in a fixed, right-nested tuple:
+
+```text
+board = pair(c0, pair(c1, pair(c2, pair(c3, pair(c4, pair(c5, pair(c6, c7)))))))
+```
+
+The row is the position in the tuple; the integer at that position is the
+queen's column. All indices are zero-based. For example, the first reference
+solution has `c0 = 0`, `c1 = 4`, and `c2 = 7`, so the queen in row 2 is in
+column 7. `first(second(second(board)))` retrieves that 7. The last column
+is reached by seven `second` operations, with no final `first`.
+
+There is no end marker because a board always has eight entries. Partial
+boards also have eight entries, but safety checks inspect only earlier rows.
+The initial search board contains eight zeros, matching the ATS2 source.
+
+### 2. Multiple arguments: one bundled tuple
+
+LAMBDA0 functions have one parameter. Bundle multiple arguments into nested
+pairs, with the final field stored directly, just as for boards:
+
+```text
+board_get(board, 2)    -> apply(board_get_term, pair(board, 2))
+board_set(board, 2, 5) -> apply(board_set_term, pair(board, pair(2, 5)))
+```
+
+A two-argument function extracts its first argument with `first(args)` and
+its second with `second(args)`. A three-argument function extracts its last
+argument with `second(second(args))`. Python helpers may build these ASTs;
+the interpreter must perform the actual lookup or update.
+
+### 3. Solution lists: tagged empty/nonempty values
+
+Boards have fixed size, but a solution list has variable length. Use a boolean
+tag to distinguish an empty list from a node holding one board and the rest:
+
+```text
+empty             = pair(false, 0)
+cons(board, rest) = pair(true, pair(board, rest))
+two boards        = cons(boardA, cons(boardB, empty))
+```
+
+`first(list)` is the boolean indicating whether a node exists. For a nonempty
+list, `first(second(list))` is its board and `second(second(list))` is its tail.
+The zero in `empty` is unused padding. Use `T0Mif0` to check the tag before
+extracting the head or tail; projecting through the empty payload would fail.
+
+The interpreted search prepends discovered boards to an accumulator. After
+finding boardA and then boardB, that accumulator is `[boardB, boardA]`. A
+LAMBDA0 list-reversal function will restore `[boardA, boardB]` before returning
+the result, preserving ATS2 discovery order.
+
+### 4. Search state and final result
+
+Bundle the search state as:
+
+```text
+pair(board, pair(row, pair(column, pair(count, reversed_solutions))))
+```
+
+This preserves the source's four arguments and adds an explicit solution list
+in place of printing during the search. Initially row, column, and count are
+zero and the list is empty. The final result will be:
+
+```text
+pair(92, solutions_in_discovery_order)
+```
+
+`first(result)` retrieves the count; `second(result)` retrieves the solution
+list. Python may decode, check, and print these returned values. It must not
+perform the queen search or supply precomputed reference boards to the solver.
+
+## Planned function mapping (not implemented yet)
+
+| ATS2 function | LAMBDA0 translation and example |
+| --- | --- |
+| `board_get(bd, i)` | Lambda with bundled arguments; conditionals and projections select an entry. For the first reference board, index 2 returns 7. An index outside 0 through 7 returns 0, matching ATS2. |
+| `board_set(bd, i, j)` | Lambda builds a new nested tuple. Setting index 2 to 5 changes only that entry. An out-of-range index returns the original board. |
+| `safety_test1(i0, j0, i, j)` | Lambda checks different columns and different diagonals. `(1, 2)` versus `(0, 0)` is safe; `(1, 1)` versus `(0, 0)` is diagonal conflict; `(1, 0)` versus `(0, 0)` is column conflict. Row uniqueness is enforced by the search. |
+| `safety_test2(i0, j0, bd, i)` | Recursive `T0Mfix` checks previous rows down to zero. Candidate `(2, 4)` is safe relative to rows 0 and 1 at columns 0 and 2. With `i = -1`, no previous rows remain, so return true. |
+| `search(bd, i, j, nsol)` | Recursive `T0Mfix` uses the five-field state above. A safe placement in row 0 advances to row 1, column 0; a conflict tries the next column; exhausting columns backtracks; filling row 7 records a board and continues. Exhausting row 0 ends the search. |
+| `print_dots`, `print_row`, `print_board` | Python display helpers reproduce presentation after decoding the interpreted result. Column 2 displays as `. . Q . . . . .`. The initial demonstration board is presentation, not a solution. |
+| `main0` | Construct a closed search term, evaluate it, decode the count and ordered boards, and verify the count is 92. For example, require `t0erm_fvset(complete_term) == frozenset()` before evaluation. |
+
+Existing integer comparison primitives suffice. Express absolute value as a
+conditional (`if d < 0 then -d else d`) and `andalso` as `if a then b else false`
+to preserve short-circuit behavior. Function definitions will be explicitly
+bound in the complete term; names such as `board_get_term` above are explanatory
+placeholders, not unresolved free variables permitted in the final AST.
+
+Call-by-value evaluates bundled arguments and pair fields eagerly, while an
+`if` evaluates only its selected branch. The planned tail-call evaluator step
+will address Python stack growth during the long sequence of search calls.
+The translation stays at eight rows, as required by this particular source;
+smaller-board generalization is outside this design.
 
 ## Verification and AI assistance
 
@@ -76,3 +220,11 @@ all 57 tests passed (27 supplied, nine analysis, nine substitution, twelve
 evaluation). Distinct errors in left and right components verify evaluation
 order; division errors in unselected components verify strict pair evaluation.
 Student review remains separate from these assistant-run checks.
+
+For step 5, AI assistance copied the source unchanged, checked its hash,
+compiled and executed it in WSL, captured stdout, and added reference checks.
+All 61 tests passed: the previous 57 plus four reference tests. The reference
+checks cover board validity, uniqueness, count, order endpoints, and malformed
+output rejection. The complete output retains all 92 boards in order for the
+future translation comparison. The representation and function mapping above
+are design decisions, not claims that the solver translation is implemented.
