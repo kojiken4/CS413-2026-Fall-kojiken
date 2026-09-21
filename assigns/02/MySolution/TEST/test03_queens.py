@@ -12,6 +12,7 @@ from lambda0 import (
 )
 from queens_lambda0 import (
     BOARD_GET, BOARD_SET, SAFETY_TEST1, SAFETY_TEST2,
+    SEARCH, REVERSE_LIST, EMPTY_LIST, list_cons, build_queens_term, decode_result,
     make_board, tuple_term, tuple_item,
 )
 
@@ -251,6 +252,71 @@ class TestSafetyTerms(unittest.TestCase):
                      T0Mapp(SAFETY_TEST2, tuple_term(T0Mint(0), T0Mint(0), board, T0Mint(-1)))):
             with self.subTest(term_type=type(term).__name__):
                 self.assertEqual(t0erm_fvset(term), frozenset())
+
+
+class TestSearchHelpers(unittest.TestCase):
+    def test_reverse_empty_single_and_multiple_entries(self):
+        for entries in ((), (1,), (1, 2, 3)):
+            with self.subTest(entries=entries):
+                source = EMPTY_LIST
+                expected = EMPTY_LIST
+                for entry in reversed(entries):
+                    source = list_cons(T0Mint(entry), source)
+                for entry in entries:
+                    expected = list_cons(T0Mint(entry), expected)
+                call = T0Mapp(REVERSE_LIST, tuple_term(source, EMPTY_LIST))
+                self.assertEqual(t0erm_cbv_evaluate0(call), expected)
+
+    def test_exhausted_first_row_ends_search(self):
+        state = tuple_term(make_board((0,) * 8), T0Mint(0), T0Mint(8), T0Mint(0), EMPTY_LIST)
+        self.assertEqual(t0erm_cbv_evaluate0(T0Mapp(SEARCH, state)), T0Mpair(T0Mint(0), EMPTY_LIST))
+
+    def test_complete_terms_are_closed(self):
+        for term in (SEARCH, REVERSE_LIST, build_queens_term()):
+            self.assertEqual(t0erm_fvset(term), frozenset())
+
+    def test_decode_empty_result(self):
+        self.assertEqual(decode_result(T0Mpair(T0Mint(0), EMPTY_LIST)), (0, []))
+
+    def test_decode_rejects_malformed_result(self):
+        board = make_board((0,) * 8)
+        cases = (
+            T0Mint(0),
+            T0Mpair(T0Mbtf(False), EMPTY_LIST),
+            T0Mpair(T0Mint(-1), EMPTY_LIST),
+            T0Mpair(T0Mint(1), EMPTY_LIST),
+            T0Mpair(T0Mint(0), T0Mpair(T0Mint(0), T0Mint(0))),
+            T0Mpair(T0Mint(0), T0Mpair(T0Mbtf(False), T0Mint(1))),
+            T0Mpair(T0Mint(1), list_cons(T0Mint(0), EMPTY_LIST)),
+            T0Mpair(T0Mint(1), list_cons(board, T0Mint(0))),
+        )
+        for value in cases:
+            with self.subTest(value=value):
+                with self.assertRaises(ValueError):
+                    decode_result(value)
+
+
+class TestQueensSearch(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.count, cls.boards = decode_result(t0erm_cbv_evaluate0(build_queens_term()))
+
+    def test_count_and_unique_boards(self):
+        self.assertEqual(self.count, 92)
+        self.assertEqual(len(self.boards), 92)
+        self.assertEqual(len(set(self.boards)), 92)
+
+    def test_every_returned_board_is_valid(self):
+        for number, board in enumerate(self.boards, start=1):
+            with self.subTest(solution=number):
+                self.assertEqual(len(board), 8)
+                self.assertEqual(set(board), set(range(8)))
+                self.assertEqual(len({row - col for row, col in enumerate(board)}), 8)
+                self.assertEqual(len({row + col for row, col in enumerate(board)}), 8)
+
+    def test_complete_order_matches_captured_ats_output(self):
+        expected = parse_ats_output(REFERENCE.read_text(encoding="utf-8"))
+        self.assertEqual(self.boards, expected)
 
 
 if __name__ == "__main__":

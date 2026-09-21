@@ -5,7 +5,7 @@
 Extend the LAMBDA0 interpreter with pairs and projections, then translate an
 ATS2 eight-queens solver into a LAMBDA0 term executed by the interpreter.
 
-## Current status: pair support, board/safety operations, and tail-call handling complete
+## Current status: full eight-queens translation implemented
 
 `lambda0.py` extends the starter's `t0erm_size` and `t0erm_fvset` with
 pair and projection cases. A pair counts as one node plus both children's
@@ -28,18 +28,17 @@ selecting a component and raise TypeError if the resulting value is not a pair.
 Both pair components are evaluated even if a projection selects only one.
 Functions inside pairs remain values; their bodies execute only on application.
 Twelve evaluation tests cover these rules, nested/mixed values, function calls,
-recursive-function values, and error propagation. The queens translation remains
-pending.
+recursive-function values, and error propagation.
 
 Step 5 adds the unchanged ATS2 source, its captured output, and four reference
-tests in `TEST/test03_queens.py`. These tests check the ATS2 reference only;
-they do not yet compare it with a translated LAMBDA0 solver.
+tests in `TEST/test03_queens.py`. Step 9 adds the translated solver comparison
+against that captured reference.
 
 Step 6 adds `queens_lambda0.py` with closed `BOARD_GET` and `BOARD_SET` function
 ASTs, plus nine tests in `TEST/test03_queens.py` for board operations and their
 construction helpers. Step 7 adds closed `SAFETY_TEST1` and `SAFETY_TEST2` terms
-and nine safety tests. Search and the full driver remain pending; running
-`queens_lambda0.py` by itself does not yet run a solver.
+and nine safety tests. Step 9 adds `SEARCH`, `REVERSE_LIST`, the complete closed
+program builder, result decoding, and a command-line driver.
 
 Step 8 makes evaluation of function bodies and selected conditional branches
 continue in a loop. Six tests in `TEST/test04_tail_calls.py` verify long tail-call
@@ -99,8 +98,8 @@ required once the translation exists.
 
 ## LAMBDA0 representations
 
-Boards and bundled arguments below are implemented in step 6. Solution lists,
-search state, and the final result remain planned for later steps.
+Boards and bundled arguments were implemented in step 6. Solution lists,
+search state, and the final result are implemented in step 9.
 
 The notation `pair(a, b)`, `first(p)`, and `second(p)` below abbreviates
 `T0Mpair`, `T0Mpfst`, and `T0Mpsnd` expressions. Integers and booleans in these
@@ -157,7 +156,7 @@ extracting the head or tail; projecting through the empty payload would fail.
 
 The interpreted search prepends discovered boards to an accumulator. After
 finding boardA and then boardB, that accumulator is `[boardB, boardA]`. A
-LAMBDA0 list-reversal function will restore `[boardA, boardB]` before returning
+LAMBDA0 list-reversal function restores `[boardA, boardB]` before returning
 the result, preserving ATS2 discovery order.
 
 ### 4. Search state and final result
@@ -170,7 +169,7 @@ pair(board, pair(row, pair(column, pair(count, reversed_solutions))))
 
 This preserves the source's four arguments and adds an explicit solution list
 in place of printing during the search. Initially row, column, and count are
-zero and the list is empty. The final result will be:
+zero and the list is empty. The final result has the form:
 
 ```text
 pair(92, solutions_in_discovery_order)
@@ -180,7 +179,7 @@ pair(92, solutions_in_discovery_order)
 list. Python may decode, check, and print these returned values. It must not
 perform the queen search or supply precomputed reference boards to the solver.
 
-## Function mapping (board and safety operations implemented; search/display planned)
+## Function mapping
 
 | ATS2 function | LAMBDA0 translation and example |
 | --- | --- |
@@ -194,9 +193,9 @@ perform the queen search or supply precomputed reference boards to the solver.
 
 Existing integer comparison primitives suffice. Express absolute value as a
 conditional (`if d < 0 then -d else d`) and `andalso` as `if a then b else false`
-to preserve short-circuit behavior. Function definitions will be explicitly
-bound in the complete term; names such as `board_get_term` above are explanatory
-placeholders, not unresolved free variables permitted in the final AST.
+to preserve short-circuit behavior. Closed helper function ASTs are embedded
+directly in the complete term; names such as `board_get_term` above are explanatory
+placeholders, not unresolved free variables in the final AST.
 
 Call-by-value evaluates bundled arguments and pair fields eagerly, while an
 `if` evaluates only its selected branch. The evaluator now reuses its Python
@@ -250,7 +249,7 @@ previous_column)` as a bundled tuple. It checks different columns, then checks
 that absolute row distance differs from absolute column distance. Equal
 distances mean a diagonal conflict. For example, `(1, 2)` versus `(0, 0)` has
 distances 1 and 2 and is safe, whereas `(1, 1)` versus `(0, 0)` has distances
-1 and 1 and is unsafe. Row uniqueness is enforced by the future search, not
+1 and 1 and is unsafe. Row uniqueness is enforced by the search, not
 by this source function.
 
 `SAFETY_TEST2` is a recursive `T0Mfix` receiving `(row, column, board,
@@ -318,6 +317,54 @@ reach Python's recursion limit. The change removes stack growth from long tail
 call chains; it does not remove every depth or performance limit. No search
 algorithm or new primitive was introduced in this step.
 
+## Running the full search
+
+From PowerShell in `assigns/02/MySolution`:
+
+```powershell
+python -B queens_lambda0.py
+```
+
+`build_queens_term()` constructs a closed `T0Mapp` applying `SEARCH` to the
+initial state. `SEARCH` is a `T0Mfix` with these ATS2 transitions:
+
+| Situation | Next action |
+| --- | --- |
+| Candidate conflicts with an earlier queen | Try the next column in the same row. |
+| Candidate is safe and the board is incomplete | Update the board, advance one row, and start at column zero. |
+| Candidate safely fills row seven | Prepend the completed board to the solution list, increment the count, and try the next column using the prior board. |
+| All columns are exhausted and row is above zero | Backtrack to the previous row and try one column after its stored placement. |
+| All columns are exhausted in row zero | Reverse the solution list in LAMBDA0 and return the count and ordered list. |
+
+For example, placing a queen safely in row zero leads to row one, column zero.
+If row one runs out of columns, the search returns to row zero and advances its
+column. The update is bound using `T0Mlam`/`T0Mapp`, corresponding to ATS2's
+`let bd1 = board_set(...)`; it is computed once per safe placement.
+
+`REVERSE_LIST` is another tail-recursive `T0Mfix`, with the remaining list and
+accumulator bundled as its argument. Python only constructs these instructions;
+the interpreter performs all search, conflict checks, and reversal.
+
+After evaluation, `decode_result` converts the returned AST values into Python
+tuples in their existing order and verifies the count matches the list length.
+The driver checks that the count is 92 and prints the original demonstration
+board followed by numbered solutions, using the ATS2 row format. It does not
+read the reference output, contain precomputed solutions, or run a Python search.
+Tests independently validate every returned board and compare the entire ordered
+sequence against the captured ATS2 reference. The full suite runs the search
+once and shares its result among those checks.
+
+The interpreter still reconstructs expressions during substitution and eagerly
+traverses pairs. The full search therefore takes much longer than the original
+compiled ATS2 executable. Tail-call handling prevents growth with the number
+of search calls, but it does not eliminate the cost of traversing growing data.
+A fresh ATS2-versus-translation run and final submission audit belong to step 10.
+
+Step 9 verification: the full suite passed all 93 tests in 237.671 seconds on
+this machine. The interpreted search returned 92 distinct valid boards, and
+the complete ordered sequence matched the captured ATS2 output. Expect the
+driver and full tests to take several minutes with this direct interpreter.
+
 ## Verification and AI assistance
 
 Baseline verification passed all 27 supplied tests using Python 3.14.7.
@@ -383,3 +430,14 @@ cases cover a long recursive countdown, tail calls through an ordinary lambda,
 a pair accumulator, pending caller arithmetic, both conditional branch choices,
 and propagation of a division error at the end of a long chain. Existing tests
 continue to cover evaluation order, binding behavior, and error conditions.
+
+For step 9, AI assistance added eight tests before implementing the search;
+the initial run failed on imports of the missing search terms. The completed
+suite passed all 93 tests, including actual full-search evaluation, count,
+uniqueness, board validity, and exact ordered comparison with the captured ATS2
+reference. Additional checks cover list reversal, closed terms, exhausted-row
+termination, empty results, and malformed-result rejection. Driver formatting
+was checked separately against captured stdout using reference-derived test
+values substituted for the evaluator result; that isolated check did not rerun
+the search. The production driver does not load or depend on reference data.
+Fresh end-to-end execution of both programs is reserved for step 10.
