@@ -5,7 +5,7 @@
 Extend the LAMBDA0 interpreter with pairs and projections, then translate an
 ATS2 eight-queens solver into a LAMBDA0 term executed by the interpreter.
 
-## Current status: pair support complete; ATS2 reference established
+## Current status: pair support and translated board operations complete
 
 `lambda0.py` extends the starter's `t0erm_size` and `t0erm_fvset` with
 pair and projection cases. A pair counts as one node plus both children's
@@ -34,6 +34,11 @@ pending.
 Step 5 adds the unchanged ATS2 source, its captured output, and four reference
 tests in `TEST/test03_queens.py`. These tests check the ATS2 reference only;
 they do not yet compare it with a translated LAMBDA0 solver.
+
+Step 6 adds `queens_lambda0.py` with closed `BOARD_GET` and `BOARD_SET` function
+ASTs, plus nine tests in `TEST/test03_queens.py` for board operations and their
+construction helpers. Conflict checking, search, and the full driver remain
+pending; running `queens_lambda0.py` by itself does not yet run a solver.
 
 The test file adds its parent directory (`MySolution`) to Python's import path,
 so it tests this directory's interpreter rather than the assignment starter.
@@ -87,7 +92,10 @@ ignored by Git. Running the tests alone needs Python but does not require WSL
 or the ATS2 compiler. A fresh original-versus-translation comparison is still
 required once the translation exists.
 
-## Planned LAMBDA0 representations (not implemented yet)
+## LAMBDA0 representations
+
+Boards and bundled arguments below are implemented in step 6. Solution lists,
+search state, and the final result remain planned for later steps.
 
 The notation `pair(a, b)`, `first(p)`, and `second(p)` below abbreviates
 `T0Mpair`, `T0Mpfst`, and `T0Mpsnd` expressions. Integers and booleans in these
@@ -167,7 +175,7 @@ pair(92, solutions_in_discovery_order)
 list. Python may decode, check, and print these returned values. It must not
 perform the queen search or supply precomputed reference boards to the solver.
 
-## Planned function mapping (not implemented yet)
+## Function mapping (board_get and board_set implemented; others planned)
 
 | ATS2 function | LAMBDA0 translation and example |
 | --- | --- |
@@ -190,6 +198,45 @@ Call-by-value evaluates bundled arguments and pair fields eagerly, while an
 will address Python stack growth during the long sequence of search calls.
 The translation stays at eight rows, as required by this particular source;
 smaller-board generalization is outside this design.
+
+## Using the translated board operations
+
+`tuple_term(*fields)` builds a nested-pair AST with at least two fields.
+`tuple_item(term, index, size)` builds projections for a fixed, valid field
+position; its index is a Python construction-time constant. `make_board`
+encodes exactly eight integer literals. It rejects incorrect lengths and
+non-integers, but permits any integer column, matching the source's `int8`
+data rather than enforcing queen safety at this stage.
+
+In contrast, `BOARD_GET` and `BOARD_SET` are LAMBDA0 functions whose index is
+supplied at runtime. They use eight conditional branches, in the same order
+as ATS2. Python loops build those branches once; Python does not choose the
+runtime branch or read/update a runtime board. Neither function has free
+variables. No changes to the interpreter were needed for this step.
+
+For example, run the following in Python from `MySolution`:
+
+```python
+from lambda0 import T0Mint, T0Mapp, t0erm_cbv_evaluate0
+from queens_lambda0 import BOARD_GET, BOARD_SET, make_board, tuple_term
+
+board = make_board((0, 4, 7, 5, 2, 6, 1, 3))
+lookup = T0Mapp(BOARD_GET, tuple_term(board, T0Mint(2)))
+assert t0erm_cbv_evaluate0(lookup) == T0Mint(7)
+
+update = T0Mapp(BOARD_SET, tuple_term(board, T0Mint(2), T0Mint(5)))
+changed = t0erm_cbv_evaluate0(update)
+assert changed == make_board((0, 4, 5, 5, 2, 6, 1, 3))
+assert board == make_board((0, 4, 7, 5, 2, 6, 1, 3))
+
+outside = T0Mapp(BOARD_GET, tuple_term(board, T0Mint(8)))
+assert t0erm_cbv_evaluate0(outside) == T0Mint(0)
+unchanged = T0Mapp(BOARD_SET, tuple_term(board, T0Mint(-1), T0Mint(5)))
+assert t0erm_cbv_evaluate0(unchanged) == board
+```
+
+The updated example has a column conflict, which is allowed: `board_set` only
+replaces an entry. The next step implements the separate safety checks.
 
 ## Verification and AI assistance
 
@@ -228,3 +275,12 @@ checks cover board validity, uniqueness, count, order endpoints, and malformed
 output rejection. The complete output retains all 92 boards in order for the
 future translation comparison. The representation and function mapping above
 are design decisions, not claims that the solver translation is implemented.
+
+For step 6, AI assistance wrote nine tests before adding the translation module;
+the initial run failed because that module did not exist. After implementation,
+all 70 tests passed. Checks cover every board index, unchanged entries and input
+boards, negative/too-large indices, computed arguments, nested get/set calls,
+closedness, and construction-helper boundaries. Board results are inspected
+directly in tests rather than relying on board_get to validate board_set.
+The README's usage assertions were also executed successfully. These checks
+verify the board operations, not equivalence of the unfinished full solver.
