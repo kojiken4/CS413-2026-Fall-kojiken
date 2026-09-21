@@ -174,6 +174,12 @@ def t0erm_subst0\
             return term
         elif isinstance(term, T0Mvar):
             return tsub if x0 == term.arg1 else term
+        elif isinstance(term, T0Mpair):
+            return T0Mpair(subst0(term.arg1), subst0(term.arg2))
+        elif isinstance(term, T0Mpfst):
+            return T0Mpfst(subst0(term.arg1))
+        elif isinstance(term, T0Mpsnd):
+            return T0Mpsnd(subst0(term.arg1))
         elif isinstance(term, T0Mlam):
             x1 = term.arg1
             if x0 == x1:

@@ -8,7 +8,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from lambda0 import (
     T0Mint, T0Mvar, T0Mlam, T0Mfix, T0Mapp, T0Mop2,
-    T0Mpair, T0Mpfst, T0Mpsnd, t0erm_size, t0erm_fvset,
+    T0Mpair, T0Mpfst, T0Mpsnd, t0erm_size, t0erm_fvset, t0erm_subst0,
 )
 
 
@@ -73,6 +73,74 @@ class TestPairAnalysis(unittest.TestCase):
         )
         self.assertEqual(t0erm_size(term), 9)
         self.assertEqual(t0erm_fvset(term), frozenset({"x", "y"}))
+
+
+class TestPairSubstitution(unittest.TestCase):
+    def test_replaces_both_components(self):
+        term = T0Mpair(T0Mvar("x"), T0Mvar("x"))
+        self.assertEqual(t0erm_subst0(term, "x", T0Mint(7)),
+                         T0Mpair(T0Mint(7), T0Mint(7)))
+        self.assertEqual(term, T0Mpair(T0Mvar("x"), T0Mvar("x")))
+
+    def test_preserves_unrelated_variables_and_constants(self):
+        term = T0Mpair(T0Mvar("y"), T0Mint(3))
+        self.assertEqual(t0erm_subst0(term, "x", T0Mint(7)), term)
+
+    def test_projection_preserves_constructor_without_evaluating(self):
+        replacement = T0Mpair(T0Mint(1), T0Mint(2))
+        for projection in (T0Mpfst, T0Mpsnd):
+            with self.subTest(projection=projection.__name__):
+                self.assertEqual(
+                    t0erm_subst0(projection(T0Mvar("p")), "p", replacement),
+                    projection(replacement),
+                )
+
+    def test_nested_pairs_and_projections(self):
+        term = T0Mpair(
+            T0Mpfst(T0Mpair(T0Mvar("x"), T0Mvar("y"))),
+            T0Mpsnd(T0Mpair(T0Mint(0), T0Mvar("x"))),
+        )
+        expected = T0Mpair(
+            T0Mpfst(T0Mpair(T0Mint(7), T0Mvar("y"))),
+            T0Mpsnd(T0Mpair(T0Mint(0), T0Mint(7))),
+        )
+        self.assertEqual(t0erm_subst0(term, "x", T0Mint(7)), expected)
+
+    def test_substitutes_free_variable_under_lambda(self):
+        term = T0Mlam("y", T0Mpair(T0Mvar("x"), T0Mpfst(T0Mvar("y"))))
+        expected = T0Mlam("y", T0Mpair(T0Mint(7), T0Mpfst(T0Mvar("y"))))
+        self.assertEqual(t0erm_subst0(term, "x", T0Mint(7)), expected)
+
+    def test_lambda_shadowing_does_not_block_sibling(self):
+        bound = T0Mlam("x", T0Mpair(T0Mvar("x"), T0Mint(0)))
+        term = T0Mpair(bound, T0Mvar("x"))
+        self.assertEqual(t0erm_subst0(term, "x", T0Mint(7)),
+                         T0Mpair(bound, T0Mint(7)))
+
+    def test_substitutes_free_variable_under_recursive_binder(self):
+        term = T0Mfix("f", "n", T0Mpair(
+            T0Mapp(T0Mvar("f"), T0Mvar("n")), T0Mpsnd(T0Mvar("p")),
+        ))
+        replacement = T0Mpair(T0Mint(1), T0Mint(2))
+        expected = T0Mfix("f", "n", T0Mpair(
+            T0Mapp(T0Mvar("f"), T0Mvar("n")), T0Mpsnd(replacement),
+        ))
+        self.assertEqual(t0erm_subst0(term, "p", replacement), expected)
+
+    def test_recursive_binder_protects_name_and_parameter(self):
+        bound = T0Mfix("f", "n", T0Mpair(T0Mvar("f"), T0Mvar("n")))
+        for name in ("f", "n"):
+            with self.subTest(name=name):
+                term = T0Mpair(bound, T0Mvar(name))
+                self.assertEqual(t0erm_subst0(term, name, T0Mint(7)),
+                                 T0Mpair(bound, T0Mint(7)))
+
+    def test_closed_function_replacement(self):
+        replacement = T0Mlam("z", T0Mpair(T0Mvar("z"), T0Mint(0)))
+        self.assertEqual(t0erm_fvset(replacement), frozenset())
+        term = T0Mpair(T0Mvar("x"), T0Mint(1))
+        self.assertEqual(t0erm_subst0(term, "x", replacement),
+                         T0Mpair(replacement, T0Mint(1)))
 
 
 if __name__ == "__main__":
