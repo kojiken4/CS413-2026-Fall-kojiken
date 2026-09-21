@@ -1,11 +1,12 @@
-"""Build LAMBDA0 terms translating queens.dats; board operations so far.
+"""Build LAMBDA0 terms translating queens.dats; board and safety operations.
 
 Python loops here construct finite ASTs. Runtime board access and updates use
 LAMBDA0 conditionals and projections executed by t0erm_cbv_evaluate0.
 """
 
 from lambda0 import (
-    t0erm, T0Mint, T0Mvar, T0Mlam, T0Mpair, T0Mpfst, T0Mpsnd, T0Mif0, T0Mop2,
+    t0erm, T0Mint, T0Mbtf, T0Mvar, T0Mlam, T0Mfix, T0Mapp,
+    T0Mpair, T0Mpfst, T0Mpsnd, T0Mif0, T0Mop1, T0Mop2,
 )
 
 
@@ -76,3 +77,52 @@ def _build_board_set() -> t0erm:
 # Closed function ASTs, called with T0Mapp and one bundled argument.
 BOARD_GET = _build_board_get()
 BOARD_SET = _build_board_set()
+
+
+def _abs_term(value: t0erm) -> t0erm:
+    """Build absolute value using existing LAMBDA0 operations."""
+    return T0Mif0(T0Mop2("<", value, T0Mint(0)), T0Mop1("-", value), value)
+
+
+def _build_safety_test1() -> t0erm:
+    args = T0Mvar("safe1_args")
+    row, column, previous_row, previous_column = (
+        tuple_item(args, position, 4) for position in range(4)
+    )
+    different_diagonals = T0Mop2(
+        "!=",
+        _abs_term(T0Mop2("-", row, previous_row)),
+        _abs_term(T0Mop2("-", column, previous_column)),
+    )
+    # ATS2 andalso: do not evaluate the diagonal check after a column conflict.
+    body = T0Mif0(
+        T0Mop2("!=", column, previous_column),
+        different_diagonals,
+        T0Mbtf(False),
+    )
+    return T0Mlam("safe1_args", body)
+
+
+SAFETY_TEST1 = _build_safety_test1()
+
+
+def _build_safety_test2() -> t0erm:
+    args = T0Mvar("safe2_args")
+    row, column, board, previous_row = (
+        tuple_item(args, position, 4) for position in range(4)
+    )
+    previous_column = T0Mapp(BOARD_GET, tuple_term(board, previous_row))
+    safe = T0Mapp(SAFETY_TEST1, tuple_term(row, column, previous_row, previous_column))
+    remaining = T0Mapp(
+        T0Mvar("safe2"),
+        tuple_term(row, column, board, T0Mop2("-", previous_row, T0Mint(1))),
+    )
+    body = T0Mif0(
+        T0Mop2(">=", previous_row, T0Mint(0)),
+        T0Mif0(safe, remaining, T0Mbtf(False)),
+        T0Mbtf(True),
+    )
+    return T0Mfix("safe2", "safe2_args", body)
+
+
+SAFETY_TEST2 = _build_safety_test2()

@@ -5,7 +5,7 @@
 Extend the LAMBDA0 interpreter with pairs and projections, then translate an
 ATS2 eight-queens solver into a LAMBDA0 term executed by the interpreter.
 
-## Current status: pair support and translated board operations complete
+## Current status: pair support, board operations, and safety checks complete
 
 `lambda0.py` extends the starter's `t0erm_size` and `t0erm_fvset` with
 pair and projection cases. A pair counts as one node plus both children's
@@ -37,8 +37,9 @@ they do not yet compare it with a translated LAMBDA0 solver.
 
 Step 6 adds `queens_lambda0.py` with closed `BOARD_GET` and `BOARD_SET` function
 ASTs, plus nine tests in `TEST/test03_queens.py` for board operations and their
-construction helpers. Conflict checking, search, and the full driver remain
-pending; running `queens_lambda0.py` by itself does not yet run a solver.
+construction helpers. Step 7 adds closed `SAFETY_TEST1` and `SAFETY_TEST2` terms
+and nine safety tests. Search and the full driver remain pending; running
+`queens_lambda0.py` by itself does not yet run a solver.
 
 The test file adds its parent directory (`MySolution`) to Python's import path,
 so it tests this directory's interpreter rather than the assignment starter.
@@ -175,7 +176,7 @@ pair(92, solutions_in_discovery_order)
 list. Python may decode, check, and print these returned values. It must not
 perform the queen search or supply precomputed reference boards to the solver.
 
-## Function mapping (board_get and board_set implemented; others planned)
+## Function mapping (board and safety operations implemented; search/display planned)
 
 | ATS2 function | LAMBDA0 translation and example |
 | --- | --- |
@@ -236,7 +237,52 @@ assert t0erm_cbv_evaluate0(unchanged) == board
 ```
 
 The updated example has a column conflict, which is allowed: `board_set` only
-replaces an entry. The next step implements the separate safety checks.
+replaces an entry. The safety functions below perform the separate checks.
+
+## Using the translated safety checks
+
+`SAFETY_TEST1` is a `T0Mlam` receiving `(row, column, previous_row,
+previous_column)` as a bundled tuple. It checks different columns, then checks
+that absolute row distance differs from absolute column distance. Equal
+distances mean a diagonal conflict. For example, `(1, 2)` versus `(0, 0)` has
+distances 1 and 2 and is safe, whereas `(1, 1)` versus `(0, 0)` has distances
+1 and 1 and is unsafe. Row uniqueness is enforced by the future search, not
+by this source function.
+
+`SAFETY_TEST2` is a recursive `T0Mfix` receiving `(row, column, board,
+last_previous_row)`. It reads that previous row using `BOARD_GET`, calls
+`SAFETY_TEST1`, and recurses with the previous index minus one only if safe.
+Any conflict returns false immediately. A negative previous index returns true
+without inspecting the board. The caller supplies only earlier rows, normally
+`last_previous_row = row - 1`; unused later board entries are ignored.
+
+All runtime arithmetic, conditions, lookups, and recursion execute in LAMBDA0.
+`_abs_term` only builds a conditional AST for absolute value. No new interpreter
+primitives or Python conflict-checking routines were added to the translation.
+
+```python
+from lambda0 import T0Mint, T0Mbtf, T0Mapp, t0erm_cbv_evaluate0
+from queens_lambda0 import SAFETY_TEST1, SAFETY_TEST2, make_board, tuple_term
+
+# Candidate row 1, column 2 is safe relative to row 0, column 0.
+safe = T0Mapp(SAFETY_TEST1, tuple_term(T0Mint(1), T0Mint(2), T0Mint(0), T0Mint(0)))
+assert t0erm_cbv_evaluate0(safe) == T0Mbtf(True)
+
+# Candidate row 1, column 1 is on the same diagonal as row 0, column 0.
+diagonal = T0Mapp(SAFETY_TEST1, tuple_term(T0Mint(1), T0Mint(1), T0Mint(0), T0Mint(0)))
+assert t0erm_cbv_evaluate0(diagonal) == T0Mbtf(False)
+
+board = make_board((0, 2, 0, 0, 0, 0, 0, 0))
+# Candidate (2, 4) is safe against both previous rows, 1 then 0.
+all_safe = T0Mapp(SAFETY_TEST2, tuple_term(T0Mint(2), T0Mint(4), board, T0Mint(1)))
+assert t0erm_cbv_evaluate0(all_safe) == T0Mbtf(True)
+# Candidate (2, 0) passes row 1 but fails against row 0's column.
+conflict = T0Mapp(SAFETY_TEST2, tuple_term(T0Mint(2), T0Mint(0), board, T0Mint(1)))
+assert t0erm_cbv_evaluate0(conflict) == T0Mbtf(False)
+# Row zero has no earlier queens to check.
+empty = T0Mapp(SAFETY_TEST2, tuple_term(T0Mint(0), T0Mint(0), board, T0Mint(-1)))
+assert t0erm_cbv_evaluate0(empty) == T0Mbtf(True)
+```
 
 ## Verification and AI assistance
 
@@ -284,3 +330,15 @@ closedness, and construction-helper boundaries. Board results are inspected
 directly in tests rather than relying on board_get to validate board_set.
 The README's usage assertions were also executed successfully. These checks
 verify the board operations, not equivalence of the unfinished full solver.
+
+For step 7, AI assistance wrote nine tests first; the initial run failed on
+imports of the missing safety terms. After implementation, all 79 tests passed.
+The single-queen test checks all 1,792 candidate/previous-queen combinations
+with distinct rows in search order and columns 0 through 7 against an independent
+row-plus/minus-column oracle. Recursive checks cover all 64 candidate positions
+against the first reference board's earlier rows. Additional cases verify
+negative-index termination, early conflict termination, both diagonal directions,
+unused later rows, boolean results, and closed terms. Deliberately invalid values
+in unvisited paths probe short-circuit behavior; they are not valid solver inputs.
+Both README Python examples executed successfully. Full solver equivalence
+remains pending; student review is separate from these assistant-run checks.

@@ -7,10 +7,13 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from lambda0 import (
-    T0Mint, T0Mpair, T0Mpfst, T0Mpsnd, T0Mapp, T0Mop2,
+    T0Mint, T0Mbtf, T0Mstr, T0Mpair, T0Mpfst, T0Mpsnd, T0Mapp, T0Mop2,
     t0erm_cbv_evaluate0, t0erm_fvset,
 )
-from queens_lambda0 import BOARD_GET, BOARD_SET, make_board, tuple_term, tuple_item
+from queens_lambda0 import (
+    BOARD_GET, BOARD_SET, SAFETY_TEST1, SAFETY_TEST2,
+    make_board, tuple_term, tuple_item,
+)
 
 REFERENCE = Path(__file__).resolve().parents[1] / "reference" / "queens-ats-output.txt"
 
@@ -160,6 +163,92 @@ class TestBoardTerms(unittest.TestCase):
         for term in (BOARD_GET, BOARD_SET,
                      T0Mapp(BOARD_GET, tuple_term(self.board, T0Mint(2))),
                      T0Mapp(BOARD_SET, tuple_term(self.board, T0Mint(2), T0Mint(5)))):
+            with self.subTest(term_type=type(term).__name__):
+                self.assertEqual(t0erm_fvset(term), frozenset())
+
+
+class TestSafetyTerms(unittest.TestCase):
+    def check_one(self, row, column, previous_row, previous_column):
+        args = tuple_term(*(T0Mint(n) for n in (row, column, previous_row, previous_column)))
+        return t0erm_cbv_evaluate0(T0Mapp(SAFETY_TEST1, args))
+
+    def check_previous(self, row, column, board, last_row):
+        args = tuple_term(T0Mint(row), T0Mint(column), board, T0Mint(last_row))
+        return t0erm_cbv_evaluate0(T0Mapp(SAFETY_TEST2, args))
+
+    def test_single_queen_examples(self):
+        cases = (
+            ((1, 2, 0, 0), True),   # Safe.
+            ((1, 0, 0, 0), False),  # Same column.
+            ((1, 1, 0, 0), False),  # One diagonal direction.
+            ((1, 0, 0, 1), False),  # Other diagonal direction.
+            ((0, 0, 3, 3), False),  # Negative row and column differences.
+            ((3, 1, 0, 5), True),
+        )
+        for coordinates, expected in cases:
+            with self.subTest(coordinates=coordinates):
+                self.assertEqual(self.check_one(*coordinates), T0Mbtf(expected))
+
+    def test_all_candidate_pairs_on_eight_row_board(self):
+        # Independent oracle: diagonal lines have equal row-column or row+column.
+        for row in range(1, 8):
+            for previous_row in range(row):
+                for column in range(8):
+                    for previous_column in range(8):
+                        expected = (
+                            column != previous_column
+                            and row - column != previous_row - previous_column
+                            and row + column != previous_row + previous_column
+                        )
+                        with self.subTest(coordinates=(row, column, previous_row, previous_column)):
+                            self.assertEqual(self.check_one(row, column, previous_row, previous_column),
+                                             T0Mbtf(expected))
+
+    def test_every_candidate_against_reference_prefix(self):
+        columns = parse_ats_output(REFERENCE.read_text(encoding="utf-8"))[0]
+        board = make_board(columns)
+        for row in range(8):
+            for column in range(8):
+                expected = all(
+                    column != columns[previous]
+                    and row - column != previous - columns[previous]
+                    and row + column != previous + columns[previous]
+                    for previous in range(row)
+                )
+                with self.subTest(row=row, column=column):
+                    self.assertEqual(self.check_previous(row, column, board, row - 1),
+                                     T0Mbtf(expected))
+
+    def test_no_previous_rows(self):
+        for last_row in (-1, -5):
+            with self.subTest(last_row=last_row):
+                # Deliberately unusable board proves the base case performs no lookup.
+                self.assertEqual(self.check_previous(0, 0, T0Mint(0), last_row), T0Mbtf(True))
+
+    def test_ignores_rows_after_last_row(self):
+        board = make_board((0, 2, 4, 4, 4, 4, 4, 4))
+        self.assertEqual(self.check_previous(2, 4, board, 1), T0Mbtf(True))
+
+    def test_recursion_reaches_earliest_conflict(self):
+        board = make_board((0, 2, 0, 0, 0, 0, 0, 0))
+        # (2, 0) is safe against row 1, but conflicts with row 0's column.
+        self.assertEqual(self.check_previous(2, 0, board, 1), T0Mbtf(False))
+
+    def test_conflict_stops_before_next_row(self):
+        # Invalid earlier value is a probe: visiting row 0 would raise TypeError.
+        board = tuple_term(T0Mstr("must not visit"), T0Mint(4), *(T0Mint(0) for _ in range(6)))
+        self.assertEqual(self.check_previous(2, 4, board, 1), T0Mbtf(False))
+
+    def test_column_conflict_skips_diagonal_check(self):
+        # Arguments are values, but row subtraction would fail if evaluated.
+        args = tuple_term(T0Mstr("unused row"), T0Mint(4), T0Mint(0), T0Mint(4))
+        self.assertEqual(t0erm_cbv_evaluate0(T0Mapp(SAFETY_TEST1, args)), T0Mbtf(False))
+
+    def test_safety_terms_and_calls_are_closed(self):
+        board = make_board((0,) * 8)
+        for term in (SAFETY_TEST1, SAFETY_TEST2,
+                     T0Mapp(SAFETY_TEST1, tuple_term(*(T0Mint(n) for n in (1, 2, 0, 0)))),
+                     T0Mapp(SAFETY_TEST2, tuple_term(T0Mint(0), T0Mint(0), board, T0Mint(-1)))):
             with self.subTest(term_type=type(term).__name__):
                 self.assertEqual(t0erm_fvset(term), frozenset())
 
