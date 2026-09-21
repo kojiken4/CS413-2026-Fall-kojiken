@@ -5,7 +5,7 @@
 Extend the LAMBDA0 interpreter with pairs and projections, then translate an
 ATS2 eight-queens solver into a LAMBDA0 term executed by the interpreter.
 
-## Current status: pair support, board operations, and safety checks complete
+## Current status: pair support, board/safety operations, and tail-call handling complete
 
 `lambda0.py` extends the starter's `t0erm_size` and `t0erm_fvset` with
 pair and projection cases. A pair counts as one node plus both children's
@@ -40,6 +40,10 @@ ASTs, plus nine tests in `TEST/test03_queens.py` for board operations and their
 construction helpers. Step 7 adds closed `SAFETY_TEST1` and `SAFETY_TEST2` terms
 and nine safety tests. Search and the full driver remain pending; running
 `queens_lambda0.py` by itself does not yet run a solver.
+
+Step 8 makes evaluation of function bodies and selected conditional branches
+continue in a loop. Six tests in `TEST/test04_tail_calls.py` verify long tail-call
+chains and preserved behavior without changing Python's recursion limit.
 
 The test file adds its parent directory (`MySolution`) to Python's import path,
 so it tests this directory's interpreter rather than the assignment starter.
@@ -195,8 +199,8 @@ bound in the complete term; names such as `board_get_term` above are explanatory
 placeholders, not unresolved free variables permitted in the final AST.
 
 Call-by-value evaluates bundled arguments and pair fields eagerly, while an
-`if` evaluates only its selected branch. The planned tail-call evaluator step
-will address Python stack growth during the long sequence of search calls.
+`if` evaluates only its selected branch. The evaluator now reuses its Python
+frame for tail calls, preparing for the long sequence of search calls.
 The translation stays at eight rows, as required by this particular source;
 smaller-board generalization is outside this design.
 
@@ -284,6 +288,36 @@ empty = T0Mapp(SAFETY_TEST2, tuple_term(T0Mint(0), T0Mint(0), board, T0Mint(-1))
 assert t0erm_cbv_evaluate0(empty) == T0Mbtf(True)
 ```
 
+## Tail-call evaluation
+
+A tail call is a call whose result is returned directly, with no work remaining
+in the current function. For example, `countdown(n - 1)` in a recursive countdown
+is a tail call; `1 + countdown(n - 1)` has an addition still waiting afterward.
+
+Previously, evaluating an application recursively called the Python evaluator
+on the substituted function body. Now `t0erm_cbv_evaluate0` uses a `while True`
+loop: it assigns the substituted body to `term` and continues in the same frame.
+Selecting a conditional branch similarly assigns that branch to `term` and
+continues. This applies to both `T0Mlam` and `T0Mfix` applications.
+
+For example, a countdown starting at 1,100 now finishes with Python's normal
+1,000-frame recursion limit. A sum using a pair `(remaining, total)` as its
+argument similarly updates that pair on each tail call and returns the total.
+The tests choose a chain length of `sys.getrecursionlimit() + 100`, rather than
+assuming the limit is always 1,000, and verify that the limit is unchanged.
+
+Call-by-value semantics remain the same: the function expression is evaluated
+before its argument, recursive-name substitution keeps its original order, pair
+components evaluate left to right, and only the chosen conditional branch runs.
+Ordinary operand evaluation still uses recursive Python calls, so a caller can
+resume pending work: `5 + countdown(1100)` still adds five to the returned value.
+
+This is not a fully iterative interpreter. Deep non-tail recursion, deeply
+nested operands, and recursive AST operations such as substitution can still
+reach Python's recursion limit. The change removes stack growth from long tail
+call chains; it does not remove every depth or performance limit. No search
+algorithm or new primitive was introduced in this step.
+
 ## Verification and AI assistance
 
 Baseline verification passed all 27 supplied tests using Python 3.14.7.
@@ -342,3 +376,10 @@ unused later rows, boolean results, and closed terms. Deliberately invalid value
 in unvisited paths probe short-circuit behavior; they are not valid solver inputs.
 Both README Python examples executed successfully. Full solver equivalence
 remains pending; student review is separate from these assistant-run checks.
+
+For step 8, AI assistance added six tests first and observed RecursionError in
+all six before refactoring. After the loop change, all 85 tests passed. The new
+cases cover a long recursive countdown, tail calls through an ordinary lambda,
+a pair accumulator, pending caller arithmetic, both conditional branch choices,
+and propagation of a division error at the end of a long chain. Existing tests
+continue to cover evaluation order, binding behavior, and error conditions.

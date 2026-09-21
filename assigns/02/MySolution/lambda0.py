@@ -211,101 +211,106 @@ def t0erm_subst0\
 ########################################################################
 #
 def t0erm_cbv_evaluate0(term: t0erm) -> t0erm:
-    if False:
-        return None
-    elif isinstance(term, T0Mint): return term
-    elif isinstance(term, T0Mbtf): return term
-    elif isinstance(term, T0Mstr): return term
-    elif isinstance(term, T0Mlam): return term
-    elif isinstance(term, T0Mfix): return term
-    elif isinstance(term, T0Mpair):
-        t1 = t0erm_cbv_evaluate0(term.arg1)
-        t2 = t0erm_cbv_evaluate0(term.arg2)
-        return T0Mpair(t1, t2)
-    elif isinstance(term, T0Mpfst):
-        t1 = t0erm_cbv_evaluate0(term.arg1)
-        if isinstance(t1, T0Mpair):
-            return t1.arg1
-        else:
-            raise TypeError(f"t0erm_cbv_evaluate0: first projection expects a pair ({t1})")
-    elif isinstance(term, T0Mpsnd):
-        t1 = t0erm_cbv_evaluate0(term.arg1)
-        if isinstance(t1, T0Mpair):
-            return t1.arg2
-        else:
-            raise TypeError(f"t0erm_cbv_evaluate0: second projection expects a pair ({t1})")
-    elif isinstance(term, T0Mapp):
-        t1 = t0erm_cbv_evaluate0(term.arg1)
-        t2 = t0erm_cbv_evaluate0(term.arg2)
-        if isinstance(t1, T0Mlam):
-            return t0erm_cbv_evaluate0(t0erm_subst0(t1.arg2, t1.arg1, t2))
-        elif isinstance(t1, T0Mfix):
-            # Substitute the argument, then bind the recursive name to t1.
-            return t0erm_cbv_evaluate0\
-                (t0erm_subst0(t0erm_subst0(t1.arg3, t1.arg2, t2), t1.arg1, t1))
-        else:
-            raise TypeError(f"t0erm_cbv_evaluate0: application expects a lam/fix ({t1})")
-    elif isinstance(term, T0Mif0):
-        t1 = t0erm_cbv_evaluate0(term.arg1)
-        if isinstance(t1, T0Mbtf):
-            if t1.arg1:
-                return t0erm_cbv_evaluate0(term.arg2)
+    # Tail positions reuse this frame; operands still evaluate recursively.
+    while True:
+        if False:
+            return None
+        elif isinstance(term, T0Mint): return term
+        elif isinstance(term, T0Mbtf): return term
+        elif isinstance(term, T0Mstr): return term
+        elif isinstance(term, T0Mlam): return term
+        elif isinstance(term, T0Mfix): return term
+        elif isinstance(term, T0Mpair):
+            t1 = t0erm_cbv_evaluate0(term.arg1)
+            t2 = t0erm_cbv_evaluate0(term.arg2)
+            return T0Mpair(t1, t2)
+        elif isinstance(term, T0Mpfst):
+            t1 = t0erm_cbv_evaluate0(term.arg1)
+            if isinstance(t1, T0Mpair):
+                return t1.arg1
             else:
-                return t0erm_cbv_evaluate0(term.arg3)
-        else:
-            raise TypeError(f"t0erm_cbv_evaluate0: condition expects a boolean ({t1})")
-    elif isinstance(term, T0Mop1):
-        if term.arg1 in ("+", "-"):
-            t1 = t0erm_cbv_evaluate0(term.arg2)
-            if isinstance(t1, T0Mint):
-                if term.arg1 == "+":
-                    return T0Mint(t1.arg1)
+                raise TypeError(f"t0erm_cbv_evaluate0: first projection expects a pair ({t1})")
+        elif isinstance(term, T0Mpsnd):
+            t1 = t0erm_cbv_evaluate0(term.arg1)
+            if isinstance(t1, T0Mpair):
+                return t1.arg2
+            else:
+                raise TypeError(f"t0erm_cbv_evaluate0: second projection expects a pair ({t1})")
+        elif isinstance(term, T0Mapp):
+            t1 = t0erm_cbv_evaluate0(term.arg1)
+            t2 = t0erm_cbv_evaluate0(term.arg2)
+            if isinstance(t1, T0Mlam):
+                term = t0erm_subst0(t1.arg2, t1.arg1, t2)
+                continue
+            elif isinstance(t1, T0Mfix):
+                # Substitute the argument, then bind the recursive name to t1.
+                term = t0erm_subst0(t0erm_subst0(t1.arg3, t1.arg2, t2), t1.arg1, t1)
+                continue
+            else:
+                raise TypeError(f"t0erm_cbv_evaluate0: application expects a lam/fix ({t1})")
+        elif isinstance(term, T0Mif0):
+            t1 = t0erm_cbv_evaluate0(term.arg1)
+            if isinstance(t1, T0Mbtf):
+                if t1.arg1:
+                    term = term.arg2
+                    continue
                 else:
-                    return T0Mint(-(t1.arg1))
+                    term = term.arg3
+                    continue
             else:
-                raise TypeError(f"t0erm_cbv_evaluate0: {term.arg1} expects integers ({t1})")
+                raise TypeError(f"t0erm_cbv_evaluate0: condition expects a boolean ({t1})")
+        elif isinstance(term, T0Mop1):
+            if term.arg1 in ("+", "-"):
+                t1 = t0erm_cbv_evaluate0(term.arg2)
+                if isinstance(t1, T0Mint):
+                    if term.arg1 == "+":
+                        return T0Mint(t1.arg1)
+                    else:
+                        return T0Mint(-(t1.arg1))
+                else:
+                    raise TypeError(f"t0erm_cbv_evaluate0: {term.arg1} expects integers ({t1})")
+            else:
+                raise TypeError(f"t0erm_cbv_evaluate0({term})")
+        elif isinstance(term, T0Mop2):
+            if term.arg1 in ("+", "-", "*", "/", "%"):
+                t1 = t0erm_cbv_evaluate0(term.arg2)
+                t2 = t0erm_cbv_evaluate0(term.arg3)
+                if isinstance(t1, T0Mint) and isinstance(t2, T0Mint):
+                    if term.arg1 == "+":
+                        return T0Mint(t1.arg1 + t2.arg1)
+                    elif term.arg1 == "-":
+                        return T0Mint(t1.arg1 - t2.arg1)
+                    elif term.arg1 == "*":
+                        return T0Mint(t1.arg1 * t2.arg1)
+                    elif term.arg1 == "%":
+                        return T0Mint(t1.arg1 % t2.arg1)
+                    else: # term.arg1 == "/"
+                        # Integer division rounds down, as in Python.
+                        return T0Mint(t1.arg1 // t2.arg1)
+                else:
+                    raise TypeError(f"t0erm_cbv_evaluate0: {term.arg1} expects integers ({t1}, {t2})")
+            elif term.arg1 in ("<", ">", "<=", ">=", "==", "!="):
+                t1 = t0erm_cbv_evaluate0(term.arg2)
+                t2 = t0erm_cbv_evaluate0(term.arg3)
+                if isinstance(t1, T0Mint) and isinstance(t2, T0Mint):
+                    if term.arg1 == "<":
+                        return T0Mbtf(t1.arg1 < t2.arg1)
+                    elif term.arg1 == ">":
+                        return T0Mbtf(t1.arg1 > t2.arg1)
+                    elif term.arg1 == "<=":
+                        return T0Mbtf(t1.arg1 <= t2.arg1)
+                    elif term.arg1 == ">=":
+                        return T0Mbtf(t1.arg1 >= t2.arg1)
+                    elif term.arg1 == "==":
+                        return T0Mbtf(t1.arg1 == t2.arg1)
+                    else: # term.arg1 == "!="
+                        return T0Mbtf(t1.arg1 != t2.arg1)
+                else:
+                    raise TypeError(f"t0erm_cbv_evaluate0: {term.arg1} expects integers ({t1}, {t2})")
+            else:
+                raise TypeError(f"t0erm_cbv_evaluate0({term})")
         else:
             raise TypeError(f"t0erm_cbv_evaluate0({term})")
-    elif isinstance(term, T0Mop2):
-        if term.arg1 in ("+", "-", "*", "/", "%"):
-            t1 = t0erm_cbv_evaluate0(term.arg2)
-            t2 = t0erm_cbv_evaluate0(term.arg3)
-            if isinstance(t1, T0Mint) and isinstance(t2, T0Mint):
-                if term.arg1 == "+":
-                    return T0Mint(t1.arg1 + t2.arg1)
-                elif term.arg1 == "-":
-                    return T0Mint(t1.arg1 - t2.arg1)
-                elif term.arg1 == "*":
-                    return T0Mint(t1.arg1 * t2.arg1)
-                elif term.arg1 == "%":
-                    return T0Mint(t1.arg1 % t2.arg1)
-                else: # term.arg1 == "/"
-                    # Integer division rounds down, as in Python.
-                    return T0Mint(t1.arg1 // t2.arg1)
-            else:
-                raise TypeError(f"t0erm_cbv_evaluate0: {term.arg1} expects integers ({t1}, {t2})")
-        elif term.arg1 in ("<", ">", "<=", ">=", "==", "!="):
-            t1 = t0erm_cbv_evaluate0(term.arg2)
-            t2 = t0erm_cbv_evaluate0(term.arg3)
-            if isinstance(t1, T0Mint) and isinstance(t2, T0Mint):
-                if term.arg1 == "<":
-                    return T0Mbtf(t1.arg1 < t2.arg1)
-                elif term.arg1 == ">":
-                    return T0Mbtf(t1.arg1 > t2.arg1)
-                elif term.arg1 == "<=":
-                    return T0Mbtf(t1.arg1 <= t2.arg1)
-                elif term.arg1 == ">=":
-                    return T0Mbtf(t1.arg1 >= t2.arg1)
-                elif term.arg1 == "==":
-                    return T0Mbtf(t1.arg1 == t2.arg1)
-                else: # term.arg1 == "!="
-                    return T0Mbtf(t1.arg1 != t2.arg1)
-            else:
-                raise TypeError(f"t0erm_cbv_evaluate0: {term.arg1} expects integers ({t1}, {t2})")
-        else:
-            raise TypeError(f"t0erm_cbv_evaluate0({term})")
-    else:
-        raise TypeError(f"t0erm_cbv_evaluate0({term})")        
 #
 ########################################################################
 ########################################################################
