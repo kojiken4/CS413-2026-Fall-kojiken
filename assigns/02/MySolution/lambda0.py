@@ -218,6 +218,22 @@ def t0erm_cbv_evaluate0(term: t0erm) -> t0erm:
     elif isinstance(term, T0Mstr): return term
     elif isinstance(term, T0Mlam): return term
     elif isinstance(term, T0Mfix): return term
+    elif isinstance(term, T0Mpair):
+        t1 = t0erm_cbv_evaluate0(term.arg1)
+        t2 = t0erm_cbv_evaluate0(term.arg2)
+        return T0Mpair(t1, t2)
+    elif isinstance(term, T0Mpfst):
+        t1 = t0erm_cbv_evaluate0(term.arg1)
+        if isinstance(t1, T0Mpair):
+            return t1.arg1
+        else:
+            raise TypeError(f"t0erm_cbv_evaluate0: first projection expects a pair ({t1})")
+    elif isinstance(term, T0Mpsnd):
+        t1 = t0erm_cbv_evaluate0(term.arg1)
+        if isinstance(t1, T0Mpair):
+            return t1.arg2
+        else:
+            raise TypeError(f"t0erm_cbv_evaluate0: second projection expects a pair ({t1})")
     elif isinstance(term, T0Mapp):
         t1 = t0erm_cbv_evaluate0(term.arg1)
         t2 = t0erm_cbv_evaluate0(term.arg2)

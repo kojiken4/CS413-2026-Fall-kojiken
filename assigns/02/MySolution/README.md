@@ -5,7 +5,7 @@
 Extend the LAMBDA0 interpreter with pairs and projections, then translate an
 ATS2 eight-queens solver into a LAMBDA0 term executed by the interpreter.
 
-## Current status: pair analysis and substitution
+## Current status: pair analysis, substitution, and evaluation
 
 `lambda0.py` extends the starter's `t0erm_size` and `t0erm_fvset` with
 pair and projection cases. A pair counts as one node plus both children's
@@ -22,7 +22,14 @@ The replacement term must still be closed (have no free variables); this is
 the starter's assumption, not a new runtime check.
 Nine additional tests cover substitution, nesting, scope boundaries, closed
 pair/function replacements, and preservation of the original input tree.
-Pair evaluation and the queens translation remain pending.
+`t0erm_cbv_evaluate0` now evaluates pairs left to right and returns their
+evaluated components in a pair. Projections evaluate their operand before
+selecting a component and raise TypeError if the resulting value is not a pair.
+Both pair components are evaluated even if a projection selects only one.
+Functions inside pairs remain values; their bodies execute only on application.
+Twelve evaluation tests cover these rules, nested/mixed values, function calls,
+recursive-function values, and error propagation. The queens translation remains
+pending.
 
 The test file adds its parent directory (`MySolution`) to Python's import path,
 so it tests this directory's interpreter rather than the assignment starter.
@@ -62,3 +69,10 @@ they failed on the missing pair/projection cases before implementing those
 cases. All 45 tests then passed (27 supplied, nine analysis, nine substitution).
 The change adds only constructor-preserving traversal to substitution; it does
 not change binding rules or the evaluator. Student review remains separate.
+
+For step 4, AI assistance added evaluation tests first and observed failures
+for the unsupported pair/projection cases. After extending the evaluator,
+all 57 tests passed (27 supplied, nine analysis, nine substitution, twelve
+evaluation). Distinct errors in left and right components verify evaluation
+order; division errors in unselected components verify strict pair evaluation.
+Student review remains separate from these assistant-run checks.
