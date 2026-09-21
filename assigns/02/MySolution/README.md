@@ -5,11 +5,17 @@
 Extend the LAMBDA0 interpreter with pairs and projections, then translate an
 ATS2 eight-queens solver into a LAMBDA0 term executed by the interpreter.
 
-## Current status: baseline
+## Current status: pair size and free-variable analysis
 
-`lambda0.py` is an unchanged copy of the assignment starter.
+`lambda0.py` extends the starter's `t0erm_size` and `t0erm_fvset` with
+pair and projection cases. A pair counts as one node plus both children's
+sizes; a projection counts as one node plus its operand's size. Free-variable
+analysis unions both components' variables or visits a projection's entire
+operand. Neither constructor binds variables or evaluates expressions.
 `TEST/test01_lambda0.py` is an unchanged copy of the supplied regression tests.
-Pair support and the queens translation are not implemented yet.
+`TEST/test02_lambda0.py` adds nine tests for these analysis operations,
+including nesting, duplicate variables, lambda scope, and recursive binders.
+Pair substitution, pair evaluation, and the queens translation remain pending.
 
 The test file adds its parent directory (`MySolution`) to Python's import path,
 so it tests this directory's interpreter rather than the assignment starter.
@@ -37,3 +43,9 @@ copied test file match their respective starter files.
 AI assistance was used to copy the supplied tests, draft this README, and run
 the baseline checks. No interpreter logic was changed in this step. This records
 the checks performed by the assistant; student review is a separate step.
+
+For step 2, AI assistance added the analysis tests before changing the two
+functions. The new tests initially raised TypeError on the unsupported
+constructors. After adding the cases, all 36 tests passed (27 supplied tests
+and nine new tests). Existing lambda and recursive-function binding logic was
+preserved. The original starter outside MySolution was not edited.

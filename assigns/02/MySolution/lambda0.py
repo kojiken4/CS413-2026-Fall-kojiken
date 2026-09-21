@@ -104,6 +104,10 @@ def t0erm_size(term: t0erm) -> sint:
         return 1
     elif isinstance(term, T0Mvar):
         return 1
+    elif isinstance(term, T0Mpair):
+        return 1 + t0erm_size(term.arg1) + t0erm_size(term.arg2)
+    elif isinstance(term, (T0Mpfst, T0Mpsnd)):
+        return 1 + t0erm_size(term.arg1)
     elif isinstance(term, T0Mlam):
         return 1 + t0erm_size(term.arg2)
     elif isinstance(term, T0Mfix):
@@ -133,6 +137,10 @@ def t0erm_fvset(term: t0erm) -> fvset:
         return frozenset()
     elif isinstance(term, T0Mvar):
         return frozenset([term.arg1])
+    elif isinstance(term, T0Mpair):
+        return t0erm_fvset(term.arg1) | t0erm_fvset(term.arg2)
+    elif isinstance(term, (T0Mpfst, T0Mpsnd)):
+        return t0erm_fvset(term.arg1)
     elif isinstance(term, T0Mlam):
         return t0erm_fvset(term.arg2) - {term.arg1}
     elif isinstance(term, T0Mfix):
