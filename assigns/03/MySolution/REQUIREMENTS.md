@@ -141,3 +141,34 @@ These scenarios specify future checks; none has been executed. Programs will use
 | AC-08: Save failure (QR-05) | Version A is successfully saved, version B is being edited, and storage can be made to reject a save. | Attempt to save B while storage rejects the operation. | A save-failure message appears without a success indication. B remains available in the current editor, and the stored version remains A. |
 
 AC-04, AC-05, AC-07, and AC-08 include failure or exceptional conditions. The assessment procedures in Section 7 additionally cover the quality requirements; these scenarios do not replace them.
+
+## 10. Traceability
+
+The table maps every functional and quality requirement to the [stakeholder brief](../LAMBDA-UI-informal-requirements.md) and, where applicable, a working assumption or explicit proposal. Section names refer to the brief. No additional stakeholder answers are used as sources. Proposed details explain how this draft makes a broader need assessable; they are not presented as wording supplied by the instructor.
+
+| Requirement | Source and basis |
+| --- | --- |
+| FR-01 | "Trying a program": type or paste a program and modify its input. The input representation remains open under Q-02. |
+| FR-02 | "Trying a program": use programs already saved in files without retyping them. |
+| FR-03 | "Trying a program": provide examples and preserve access to originals when examples are modified. |
+| FR-04 | "Trying a program": keep a written program and return to it later; A-01 proposes explicit saving. |
+| FR-05 | "Keeping examples as tests": retain prepared examples across refreshes and sessions; A-01 defines the proposed persistence conditions. |
+| FR-06 | "Trying a program": check whether a program compiles without running it. |
+| FR-07 | "Trying a program": run a program and see its answer. |
+| FR-08 | "Understanding what happened": provide useful explanations and distinguish compilation, runtime, and environment failures; "Keeping the project manageable": messages must not depend only on color. |
+| FR-09 | "Understanding what happened": help locate a source problem when the compiler supplies its location. |
+| FR-10 | "Trying a program": inspect available ASTs or generated code without obstructing simple execution. Making the view optional to open is this draft's interpretation of that need. |
+| FR-11 | "Understanding what happened": identify compiler unavailability, preserve work, and allow another attempt after recovery. |
+| FR-12 | "Understanding what happened": stop a long-running or nonterminating program; A-04 proposes the cancellation policy and confirmation requirement. |
+| FR-13 | "Understanding what happened": identify which program version produced a result after an edit; A-03 proposes retaining the submitted program for inspection. |
+| FR-14 | "Keeping examples as tests": maintain named programs with expected values or expected compilation errors; A-02 proposes the initial outcome types. |
+| FR-15 | "Keeping examples as tests": retain test collections for later sessions; A-01 proposes explicit saving and reopening. |
+| FR-16 | "Keeping examples as tests": determine whether tests behave as expected; A-02 defines matching. "Understanding what happened" supports distinguishing environment failures from program outcomes. |
+| FR-17 | "Keeping examples as tests": rerun collections without one troublesome test making the rest unusable; "Understanding what happened": retry after compiler recovery; A-04 governs cancellation. |
+| FR-18 | "Keeping examples as tests": provide a quick summary and details for investigating unexpected outcomes. Summary counts are a proposed presentation of that summary. |
+| FR-19 | "The compiler is still evolving": allow sample responses for demonstrations while ensuring they cannot be mistaken for actual compilation results. |
+| QR-01 | Brief introduction: support users unfamiliar with the compiler; "Keeping the project manageable": another person should be able to follow setup instructions. The independent setup-and-run exercise is a proposed assessment. |
+| QR-02 | "Keeping the project manageable": support main tasks with a keyboard. Visible focus is a proposed condition for assessing usable keyboard navigation. |
+| QR-03 | "Keeping the project manageable": messages must make sense without relying only on colors. Text labels make this assessable. |
+| QR-04 | "Understanding what happened": remain usable during ongoing work; "Keeping the project manageable": respond promptly to ordinary actions. A-05 supplies the proposed target and workload; QR-04 proposes ten measurements per action. |
+| QR-05 | "Keeping the project manageable": prioritize reliable editing; "Keeping examples as tests": avoid losing prepared work. The save-failure preservation guarantee is an explicit proposal in Section 7, extending these goals to failed saves. |
