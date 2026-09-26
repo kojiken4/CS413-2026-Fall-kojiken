@@ -29,6 +29,8 @@ The environment team must coordinate with the compiler interface provider to est
 
 The first version will run locally on a student's or instructor's computer and be accessed through a browser. Its scope prioritizes reliable editing, understandable results, and repeatable tests, as requested in the brief.
 
+The table includes core capabilities and optional candidates. Compiler-information inspection (FR-10) and demonstrations using sample responses (FR-19) are optional under the proposed priorities in Section 6; listing them here does not make them mandatory for the first version.
+
 | Area | Included capabilities |
 | --- | --- |
 | Programs and examples | Enter, paste, and load programs; modify starter examples while retaining access to the originals; and save work for later use. |
@@ -52,12 +54,12 @@ The instructor's brief is the stakeholder input available for this specification
 | --- | --- | --- | --- |
 | Q-01 | Who will provide the compiler interface, and what operations and response information will it support, including results, errors, source locations, and intermediate representations? | Identifies the integration contact and establishes what the environment can request and display without requiring it to implement compiler functionality. | Unresolved |
 | Q-02 | What program representation should users enter or load in the first version, given that source notation is undecided and the current interpreter accepts Python-constructed ASTs? | Determines the accepted editor and file input and what can be submitted to the language tools. | Unresolved |
-| Q-03 | Should programs and test collections be saved automatically or through an explicit save action, and must unfinished edits also survive refreshes and later sessions? | Defines when work is considered saved and exactly what must be restored, rather than assuming that preserving saved programs also preserves every edit. | Unresolved |
-| Q-04 | Which expected value types must tests support, and should an expected compilation failure match any rejection or a particular diagnostic? | Defines how the environment determines whether a test passed and prevents unrelated failures from being counted as the expected outcome. | Unresolved |
-| Q-05 | What cancellation support will the tools provide, and should a nonterminating test be stopped automatically after an agreed limit or require user intervention? | Determines how execution can actually be stopped and how the remaining tests can continue. Any time limit would need to be agreed or explicitly proposed. | Unresolved |
-| Q-06 | When a result arrives after the program has been edited, should users be able to inspect the submitted version, or is a clear indication that the result belongs to an earlier version sufficient? | Establishes how users identify the program that produced a result without assuming a full version-history feature. | Unresolved |
+| Q-03 | Should programs and test collections be saved automatically or through an explicit save action, and must unfinished edits also survive refreshes and later sessions? | Defines when work is considered saved and exactly what must be restored, rather than assuming that preserving saved programs also preserves every edit. | A-01 proposed; unsaved-edit recovery unresolved |
+| Q-04 | Which expected value types must tests support, and should an expected compilation failure match any rejection or a particular diagnostic? | Defines how the environment determines whether a test passed and prevents unrelated failures from being counted as the expected outcome. | A-02 proposed; stakeholder confirmation pending |
+| Q-05 | What cancellation support will the tools provide, and should a nonterminating test be stopped automatically after an agreed limit or require user intervention? | Determines how execution can actually be stopped and how the remaining tests can continue. Any time limit would need to be agreed or explicitly proposed. | A-04 proposed; tool support unresolved |
+| Q-06 | When a result arrives after the program has been edited, should users be able to inspect the submitted version, or is a clear indication that the result belongs to an earlier version sufficient? | Establishes how users identify the program that produced a result without assuming a full version-history feature. | A-03 proposed; stakeholder confirmation pending |
 | Q-07 | Which browsers and operating systems must the first version support, and what local setup prerequisites are acceptable? | Defines the supported environment and the conditions under which setup instructions and compatibility will be evaluated. | Unresolved |
-| Q-08 | What task-completion and interface-response targets should define acceptable usability and responsiveness, and under what program sizes and test-collection sizes should they be assessed? | Makes terms such as "straightforward" and "promptly" verifiable while separating ordinary interface response from compiler execution time. | Unresolved |
+| Q-08 | What task-completion and interface-response targets should define acceptable usability and responsiveness, and under what program sizes and test-collection sizes should they be assessed? | Makes terms such as "straightforward" and "promptly" verifiable while separating ordinary interface response from compiler execution time. | A-05 and QR-01 assessment proposed; stakeholder confirmation pending |
 
 ### Working assumptions
 
@@ -81,7 +83,7 @@ Requirements involving the language tools depend on the interface and input repr
 | --- | --- | --- |
 | FR-01 | Essential | The environment shall allow users to enter, paste, and edit program content. The accepted representation remains subject to Q-02. |
 | FR-02 | Essential | The environment shall allow users to load a program from a local file into the editor. Supported program files remain subject to Q-02. |
-| FR-03 | Essential | The environment shall provide selectable starter examples and allow users to modify a selected example while retaining access to its original content. |
+| FR-03 | Essential | The environment shall provide selectable starter examples (preprovided programs) and allow users to modify a selected example while retaining access to its original content. A user's saved edited version is distinct from that original; preserving the original shall not reset the saved edits. |
 | FR-04 | Essential | The environment shall allow users to save a program and select a saved program for further editing or execution. Saving follows A-01. |
 | FR-05 | Essential | The environment shall restore saved programs and test collections after a page refresh or a later session under the conditions in A-01. |
 | FR-06 | Essential | On a compile-only request, the environment shall submit the current program for compilation and display success or compilation diagnostics without requesting execution. |
@@ -132,7 +134,7 @@ These scenarios specify future checks; none has been executed. Programs will use
 | ID and requirements | Starting conditions | Action or input | Observable expected result |
 | --- | --- | --- | --- |
 | AC-01: Compile and run (FR-06, FR-07) | A valid factorial program with input 5 is open, and the tools are available. | Request compilation only, then request execution separately. | The first request reports compilation success without requesting execution. The second displays the integer result 120. Inspect the requests sent to the tools to confirm the distinction. |
-| AC-02: Preserve starter examples (FR-03) | The original factorial example is available with input 5. | Select it, change its input to 6, then select the original example again. | The original remains selectable and contains input 5; editing the working copy has not overwritten it. |
+| AC-02: Preserve starter examples (FR-03, FR-04) | The original factorial example is available with input 5, and saving is available. | Select it, change its input to 6, and save the edited version. Then select the original example and reopen the saved version in turn. | The original contains input 5, while the saved edited version contains input 6. Both remain accessible; preserving the original neither overwrites nor resets the saved edits. |
 | AC-03: Restore saved work (FR-04, FR-05, FR-15) | A program and a named test collection have been explicitly saved under A-01. The collection includes expected integer, Boolean, and compilation-rejection outcomes. | Refresh the page and reopen the saved items; then close and reopen the environment in the same browser profile and repeat. | The saved program content and every test's name, program, and expected outcome match the saved values after both operations. The program can be selected for editing. |
 | AC-04: Compiler unavailable (FR-08, FR-11) | The editor contains unsaved changes, saved work exists, and the compiler is unreachable. | Request execution, then restore compiler availability and submit again. | The initial request reports compiler unavailability as an environment failure, not a program error. Editor content and saved work remain intact. The later request can complete and display its result. |
 | AC-05: Cancel a nonterminating execution (FR-12) | An execution remains active and the interface can provide controlled cancellation responses. | Request a stop. First delay confirmation, then confirm termination. Repeat with a cancellation-failure response. | While confirmation is pending, the environment shows a pending request and does not claim execution has stopped. Confirmation produces a stopped status. The failure case reports cancellation failure without falsely reporting termination. |
@@ -150,7 +152,7 @@ The table maps every functional and quality requirement to the [stakeholder brie
 | --- | --- |
 | FR-01 | "Trying a program": type or paste a program and modify its input. The input representation remains open under Q-02. |
 | FR-02 | "Trying a program": use programs already saved in files without retyping them. |
-| FR-03 | "Trying a program": provide examples and preserve access to originals when examples are modified. |
+| FR-03 | "Trying a program": provide examples, preserve access to originals when examples are modified, and keep written programs for later use. The distinction between the original and saved edits combines these needs without prescribing a copying mechanism. |
 | FR-04 | "Trying a program": keep a written program and return to it later; A-01 proposes explicit saving. |
 | FR-05 | "Keeping examples as tests": retain prepared examples across refreshes and sessions; A-01 defines the proposed persistence conditions. |
 | FR-06 | "Trying a program": check whether a program compiles without running it. |
@@ -172,3 +174,15 @@ The table maps every functional and quality requirement to the [stakeholder brie
 | QR-03 | "Keeping the project manageable": messages must make sense without relying only on colors. Text labels make this assessable. |
 | QR-04 | "Understanding what happened": remain usable during ongoing work; "Keeping the project manageable": respond promptly to ordinary actions. A-05 supplies the proposed target and workload; QR-04 proposes ten measurements per action. |
 | QR-05 | "Keeping the project manageable": prioritize reliable editing; "Keeping examples as tests": avoid losing prepared work. The save-failure preservation guarantee is an explicit proposal in Section 7, extending these goals to failed saves. |
+
+## 11. Review Notes
+
+The draft was reviewed for consistency between scope and priorities, clarity of assumptions, and whether acceptance checks distinguish the intended outcomes. The following issues were found and corrected during review.
+
+| Issue found | Correction made |
+| --- | --- |
+| Section 4 listed compiler-information inspection and sample-response demonstrations as included capabilities, while FR-10 and FR-19 marked them Optional. This could imply conflicting first-version commitments. | Clarified that the scope table includes optional candidates and explicitly linked their inclusion to the proposed priorities in Section 6. |
+| Every clarification question was marked unresolved even where the draft used a specific working assumption. Readers could miss the provisional basis for the requirements. | Updated the affected question statuses to reference A-01 through A-05 or the proposed assessment, while retaining stakeholder confirmation and remaining technical unknowns as open issues. |
+| AC-02 checked access to the original starter example but did not explain what happens to an edited version that the user saves. It could be read as resetting saved edits. | Defined starter examples in FR-03, distinguished originals from saved edited versions, and expanded AC-02 to check both input 5 in the original and input 6 in the saved version. Updated traceability accordingly. |
+
+The compiler provider and input representation, actual cancellation support, supported platform, and recovery of unsaved edits still require clarification. Proposed assumptions and assessment targets remain unconfirmed. This review checks the specification; it does not establish that an implementation or compiler integration has passed the acceptance criteria.
