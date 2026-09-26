@@ -69,6 +69,7 @@ The following proposals allow specific behavior to be described while stakeholde
 | A-02 | Q-04 | Initially compare integer and Boolean results by both type and value. An expected compilation rejection matches any compiler-reported compilation error, but never a runtime or environment failure. This supports the test examples in the brief without assuming diagnostic-specific matching. |
 | A-03 | Q-06 | Retain the submitted program with its result so users can inspect it after editing the current program. This identifies the input that produced a result without requiring a complete edit history. |
 | A-04 | Q-05 | Use user-requested cancellation in the first version; no automatic execution time limit is proposed at this stage. Actual termination requires confirmation from the language tools, whose cancellation support remains unresolved. This distinguishes requesting cancellation from successfully stopping execution. |
+| A-05 | Q-08 | Propose visible interface feedback within 500 milliseconds for ordinary actions, assessed with programs of up to 100 lines and collections of up to 20 tests. These are proposed evaluation conditions, not input-size limits. Record the test computer, browser, and operating system; the supported configuration remains subject to Q-07. Compiler execution time is excluded. |
 
 ## 6. Functional Requirements
 
@@ -97,3 +98,15 @@ Requirements involving the language tools depend on the interface and input repr
 | FR-17 | Essential | The environment shall allow users to run a saved test collection. A failed test or a test whose cancellation is confirmed shall not prevent the remaining tests from running. If the compiler becomes unavailable, the environment shall identify tests that could not run and retain the collection for another attempt. |
 | FR-18 | Essential | For a collection run, the environment shall display each test's status and summary counts for the displayed statuses. Users shall be able to inspect each test's expected outcome and actual result, diagnostic, or reason it did not complete. |
 | FR-19 | Optional | If a demonstration using sample compiler responses is provided, the environment shall visibly label the mode and its displayed results as simulated. Simulated results shall not be presented as actual compiler execution. |
+
+## 7. Quality Requirements
+
+These requirements define how the environment's usability, accessibility, responsiveness, and reliability will be assessed. All are Essential because they support the brief's priorities for classroom use and dependable work. Numerical targets in A-05 and the save-failure guarantee in QR-05 are proposals, not stakeholder agreements. The checks described here are future evaluations, not completed test results.
+
+| ID | Quality | Requirement and assessment |
+| --- | --- | --- |
+| QR-01 | Usability and setup | A student who has not used the environment before shall be able to follow the supplied setup instructions, open a starter example, request execution, and locate its result without assistance from the development team. Assess this on a supported configuration with the documented prerequisites installed and the language tools available; record any step requiring additional instructions. Supported configurations remain subject to Q-07. |
+| QR-02 | Keyboard access | Users shall be able to edit a program, select an example or saved program, save work, request compilation or execution, request cancellation, and create and run a test collection using only the keyboard. Verify these workflows without a pointing device and check that the focused control is visibly identifiable. |
+| QR-03 | Understandable messages | Error categories, execution states, and test outcomes shall remain distinguishable without color. Verify that each displayed state has a text label identifying its meaning when color cues are removed. |
+| QR-04 | Responsiveness | Under A-05, typed edits shall appear, example selections shall update the editor, and run or stop requests shall show acknowledgment within 500 milliseconds of the action, including while an earlier execution is pending. Assess each action ten times and require every measurement to meet the proposed target. Acknowledgment does not imply that compilation, execution, or cancellation has completed. |
+| QR-05 | Reliability of saving | If a save attempt fails, the environment shall retain the content being saved in the current session, preserve the last successfully saved version if one exists, and report the failure without indicating success. Assess this by causing a storage failure during a save and comparing the retained and previously saved content with their pre-attempt values. This guarantee does not extend to unsaved work after the session ends. |
