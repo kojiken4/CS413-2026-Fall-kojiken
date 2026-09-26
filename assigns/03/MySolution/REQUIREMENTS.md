@@ -43,3 +43,18 @@ The accepted program representation, compiler interface, saving behavior, cancel
 Public hosting, user accounts, and simultaneous collaborative editing are outside the first version, as stated in the brief. Compiler development remains outside the environment project.
 
 Collection sharing is proposed for a later version because the instructor explicitly permits its deferral. Sophisticated visual effects and additional features of a full development environment are also proposed for deferral so that the first version can focus on the stated priorities. These deferrals are scope proposals, not additional stakeholder agreements.
+
+## 5. Clarification Questions and Assumptions
+
+The instructor's brief is the stakeholder input available for this specification. No additional stakeholder answers have been received. The following questions remain unresolved; no working assumptions have yet been adopted to answer them. Any later answer or assumption will be recorded against its question ID, with assumptions explicitly distinguished from stakeholder decisions.
+
+| ID | Clarification question | Why the answer matters | Status |
+| --- | --- | --- | --- |
+| Q-01 | Who will provide the compiler interface, and what operations and response information will it support, including results, errors, source locations, and intermediate representations? | Identifies the integration contact and establishes what the environment can request and display without requiring it to implement compiler functionality. | Unresolved |
+| Q-02 | What program representation should users enter or load in the first version, given that source notation is undecided and the current interpreter accepts Python-constructed ASTs? | Determines the accepted editor and file input and what can be submitted to the language tools. | Unresolved |
+| Q-03 | Should programs and test collections be saved automatically or through an explicit save action, and must unfinished edits also survive refreshes and later sessions? | Defines when work is considered saved and exactly what must be restored, rather than assuming that preserving saved programs also preserves every edit. | Unresolved |
+| Q-04 | Which expected value types must tests support, and should an expected compilation failure match any rejection or a particular diagnostic? | Defines how the environment determines whether a test passed and prevents unrelated failures from being counted as the expected outcome. | Unresolved |
+| Q-05 | What cancellation support will the tools provide, and should a nonterminating test be stopped automatically after an agreed limit or require user intervention? | Determines how execution can actually be stopped and how the remaining tests can continue. Any time limit would need to be agreed or explicitly proposed. | Unresolved |
+| Q-06 | When a result arrives after the program has been edited, should users be able to inspect the submitted version, or is a clear indication that the result belongs to an earlier version sufficient? | Establishes how users identify the program that produced a result without assuming a full version-history feature. | Unresolved |
+| Q-07 | Which browsers and operating systems must the first version support, and what local setup prerequisites are acceptable? | Defines the supported environment and the conditions under which setup instructions and compatibility will be evaluated. | Unresolved |
+| Q-08 | What task-completion and interface-response targets should define acceptable usability and responsiveness, and under what program sizes and test-collection sizes should they be assessed? | Makes terms such as "straightforward" and "promptly" verifiable while separating ordinary interface response from compiler execution time. | Unresolved |
