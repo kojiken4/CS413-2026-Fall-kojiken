@@ -1,0 +1,2 @@
+# Malformed constructor input: missing arg1.
+D0Eint()

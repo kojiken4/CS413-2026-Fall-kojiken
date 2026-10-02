@@ -40,6 +40,33 @@ repository root failed imports; the documented invocation from `MySolution`
 passed. Constructor parsing and transport checks are not evidence of completed
 Lint, Interpret, editing, or browser workflows.
 
+## Step 3 checks
+
+`tests/test_backend.py` calls the real supplied `d0exp_fvset` and evaluator for
+normal operation. Its free-variable cases cover all 13 constructors, duplicate
+occurrences, lexical shadowing/nested bindings, recursive name/parameter scope,
+nonrecursive let initializer scope, unused bindings, and both conditional branches.
+Lint returns a `frozenset`, sorts diagnostics, and does not evaluate closed
+source that would divide by zero.
+
+Real evaluation cases cover arithmetic, booleans, conditionals, let/lambda
+application, pairs/projections, and successful lambda/fix closure values.
+Factorial tests include 0, 1, and 5 (results 1, 1, 120); Fibonacci tests include
+0, 1, and 6 (results 0, 1, 8), using the actual sample files.
+
+Error checks distinguish malformed input, runtime type/arithmetic errors, exact
+sentinels directly or nested in pairs, unexpected tool failures, and invalid tool
+returns. Interpretation is verified independent of Lint with an empty environment.
+Mocks inject unexpected failures/recursion errors and verify adapter retry; these
+are not replacements for real Lint or Interpret tests. Placeholders neither parse
+source nor produce artifacts; Execute calls neither compilation nor interpretation.
+
+Observed on Python 3.13.14: **199 passed in 0.39 seconds**, exit 0. The existing
+Starlette/HTTPX warning remains. An initial run caught misuse of a Python type
+alias in a runtime value check; the adapter now checks the concrete supplied
+`D0V000` class. The supplied interpreter still matches its original SHA256.
+No timeout, busy-state, controller dispatch, or browser-action checks are claimed.
+
 ## Requirement traceability
 
 | Requirement | Required checks | Current status |
@@ -48,12 +75,12 @@ Lint, Interpret, editing, or browser workflows.
 | F2 | Initial typing, editing, Apply/Discard, dirty-state guards | Pending |
 | F3 | Empty/UTF-8/size rejection, preservation of state and edits | Reader text/size checks tested; upload/state checks pending |
 | F4 | Button order, applied-source prerequisite, disabled Execute | Pending |
-| F5 | Real Lint, lexical scope, deterministic undeclared names | Pending |
-| F6 | Real evaluation, arithmetic/examples/base cases, input/runtime errors | Pending |
-| F7 | Explicit placeholders and disabled Execute explanation | Pending |
+| F5 | Real Lint, lexical scope, deterministic undeclared names | Backend tested; browser reporting pending |
+| F6 | Real evaluation, arithmetic/examples/base cases, input/runtime errors | Backend tested; browser display pending |
+| F7 | Explicit placeholders and disabled Execute explanation | Backend responses tested; controls pending |
 | F8 | Revision increment and results/artifacts invalidation | Pending |
 | F9 | Operation/revision/outcome, line breaks, literal HTML-like text | Pending |
-| F10 | Busy state, conflicting work, bounded execution, failure/retry | Pending |
+| F10 | Busy state, conflicting work, bounded execution, failure/retry | Adapter failure/retry tested; busy/timeout/HTTP checks pending |
 
 The full browser smoke test and clean-checkout setup verification remain pending.
 A landing route response is not evidence that those checks have passed.

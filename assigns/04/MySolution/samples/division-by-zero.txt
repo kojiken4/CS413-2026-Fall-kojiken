@@ -1,0 +1,2 @@
+# Closed source passes Lint but fails during Interpret.
+D0Eop2("/", D0Eint(1), D0Eint(0))

@@ -46,3 +46,22 @@ commit selection remain separate from automated checks. No commit was made.
 - The full suite passed 129 tests with the previously recorded dependency warning.
   The backend operations, model, HTTP actions, and view controls were not extended.
   User review and commit selection are still pending; no commit was made.
+
+## Step 3 review and validation
+
+- User authorized the next step after discussing the adapter's role in connecting
+  `lambda1.py` functionality to application tools.
+- Codex implemented real Lint/Interpret, neutral shared contracts, explicit
+  Type-check/Compile placeholders, unavailable Execute, and five sample inputs.
+  The supplied interpreter and reader were not modified.
+- Shared types are separate from the concrete adapter so model/controller code
+  can use the contract without importing interpreter implementation details.
+- Tests exercise real lexical scope, arithmetic, factorial/Fibonacci and base
+  cases, input/runtime errors, pair sentinels, and successful closure values.
+  Injected backend failures verify failure classification and successful retry.
+- The first run found misuse of the `d0val` type alias with `isinstance`; it was
+  corrected to the concrete `D0V000` base class. Exact sentinel detection remains
+  separate because all successful interpreter values inherit from that class.
+- Final full suite: 199 passed, with the existing dependency warning. Interpreter
+  SHA256 matches the supplied file. Timeout, MVC state, and HTTP/browser integration
+  are left for their planned steps. Nothing was staged or committed.
