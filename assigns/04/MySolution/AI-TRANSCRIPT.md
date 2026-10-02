@@ -65,3 +65,21 @@ commit selection remain separate from automated checks. No commit was made.
 - Final full suite: 199 passed, with the existing dependency warning. Interpreter
   SHA256 matches the supplied file. Timeout, MVC state, and HTTP/browser integration
   are left for their planned steps. Nothing was staged or committed.
+
+## Step 4 review and validation
+
+- User requested an explanation of model ownership versus language-tool logic,
+  then explicitly authorized Step 4.
+- Codex implemented immutable state snapshots and locked transitions for source,
+  drafts, revisions, results, and busy state. The controller will coordinate tools;
+  the model does not invoke them. Shared transport validation was extracted so
+  the model does not import language code, preserving the reader's existing API.
+- Review identified a stale-cleanup race. Operation completion and cleanup now
+  require the original request object, preventing old work from affecting a newer
+  request at the same source revision. Regression tests cover both cases.
+- Tests verify isolated model imports, rejected edits/replacements, dirty/busy
+  guards, revision invalidation, result association, failure recovery, and atomic
+  concurrent starts. Oversized test identifiers were shortened after setup errors.
+- Final verification: 276 tests passed with the existing dependency warning.
+  No compiler or generated artifact extension was added. Browser/controller
+  integration and timeouts remain pending. Nothing was staged or committed.

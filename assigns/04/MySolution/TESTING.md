@@ -67,20 +67,46 @@ alias in a runtime value check; the adapter now checks the concrete supplied
 `D0V000` class. The supplied interpreter still matches its original SHA256.
 No timeout, busy-state, controller dispatch, or browser-action checks are claimed.
 
+## Step 4 checks
+
+`tests/test_model.py` tests the model directly without browser or server requests.
+An isolated Python process imports the model and applies source while verifying
+that FastAPI, the backend, constructor reader, and interpreter are not imported.
+
+Cases cover initial manual entry, blank manual drafts over existing source,
+Apply/Discard, uploads/canned replacements, identical-source reloads, immutable
+snapshots, source names, and result invalidation on new revisions. Empty,
+oversized, nontext, and invalid Unicode rejection preserves applied state;
+rejected text remains correctable. Limits count UTF-8 bytes. Malformed constructor
+syntax is accepted as source and left for the tools to diagnose.
+
+All source operations require applied source; dirty/busy conflicts are rejected.
+Execute remains unavailable, and artifacts remain absent. Completion validates
+request ownership, operation, and revision; backend failure results preserve
+source and restore availability. Wrong/stale completions cannot change state.
+Cleanup is idempotent, and late completion/cleanup cannot affect newer requests.
+A concurrent-start test verifies that only one request becomes active.
+
+Observed on Python 3.13.14: **276 passed**, exit 0, with the existing dependency
+warning. Oversized boundary-test identifiers were shortened after test setup
+errors; the complete suite then passed. Supplied language semantics and the
+browser/controller code were not changed. Upload-byte decoding, controller
+orchestration, timeout, and browser smoke tests remain pending.
+
 ## Requirement traceability
 
 | Requirement | Required checks | Current status |
 | --- | --- | --- |
-| F1 | Upload, manual entry, editable factorial/Fibonacci, source name/revision | Pending |
-| F2 | Initial typing, editing, Apply/Discard, dirty-state guards | Pending |
-| F3 | Empty/UTF-8/size rejection, preservation of state and edits | Reader text/size checks tested; upload/state checks pending |
-| F4 | Button order, applied-source prerequisite, disabled Execute | Pending |
+| F1 | Upload, manual entry, editable factorial/Fibonacci, source name/revision | Model manual/load/name/revision transitions tested; UI pending |
+| F2 | Initial typing, editing, Apply/Discard, dirty-state guards | Model tested; HTTP/browser workflow pending |
+| F3 | Empty/UTF-8/size rejection, preservation of state and edits | Reader/model text/size/state preservation tested; upload decoding pending |
+| F4 | Button order, applied-source prerequisite, disabled Execute | Model prerequisites/Execute guard tested; controls pending |
 | F5 | Real Lint, lexical scope, deterministic undeclared names | Backend tested; browser reporting pending |
 | F6 | Real evaluation, arithmetic/examples/base cases, input/runtime errors | Backend tested; browser display pending |
 | F7 | Explicit placeholders and disabled Execute explanation | Backend responses tested; controls pending |
-| F8 | Revision increment and results/artifacts invalidation | Pending |
+| F8 | Revision increment and results/artifacts invalidation | Model revisions/result clearing tested; artifacts always absent; UI pending |
 | F9 | Operation/revision/outcome, line breaks, literal HTML-like text | Pending |
-| F10 | Busy state, conflicting work, bounded execution, failure/retry | Adapter failure/retry tested; busy/timeout/HTTP checks pending |
+| F10 | Busy state, conflicting work, bounded execution, failure/retry | Adapter/model failure/retry and busy guards tested; timeout/HTTP checks pending |
 
 The full browser smoke test and clean-checkout setup verification remain pending.
 A landing route response is not evidence that those checks have passed.

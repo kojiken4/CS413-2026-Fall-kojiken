@@ -4,7 +4,11 @@ import ast
 
 from . import lambda1
 
-MAX_SOURCE_BYTES = 64 * 1024
+from .source_validation import (
+    MAX_SOURCE_BYTES,
+    SourceValidationError,
+    validate_source as _validate_source,
+)
 
 
 class ConstructorInputError(ValueError):
@@ -49,17 +53,11 @@ _CONSTRUCTORS: dict[
 
 
 def validate_source(source: str) -> None:
-    """Check source transport constraints without parsing or modifying it."""
-    if not isinstance(source, str):
-        raise ConstructorInputError("Source must be text.")
+    """Preserve the reader API while sharing transport checks with the model."""
     try:
-        size = len(source.encode("utf-8"))
-    except UnicodeEncodeError as error:
-        raise ConstructorInputError("Source must be valid UTF-8 text.") from error
-    if size > MAX_SOURCE_BYTES:
-        raise ConstructorInputError(f"Source exceeds the {MAX_SOURCE_BYTES}-byte UTF-8 limit.")
-    if not source.strip():
-        raise ConstructorInputError("Source must not be empty or whitespace-only.")
+        _validate_source(source)
+    except SourceValidationError as error:
+        raise ConstructorInputError(str(error)) from error
 
 
 def read_constructor(source: str) -> lambda1.d0exp:

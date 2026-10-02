@@ -1,6 +1,6 @@
 # LAMBDA Web Front-End
 
-Assignment 04 implementation, currently at Step 3 (language-tool backend).
+Assignment 04 implementation, currently at Step 4 (application model).
 Requires Python 3.12 or later; setup and tests were verified with Python 3.13.14 on Windows.
 Direct runtime dependencies are pinned in `requirements.txt`; test dependencies
 are in `requirements-dev.txt`.
@@ -100,17 +100,42 @@ contract.
 | `samples/division-by-zero.txt` | Pass | Division-by-zero runtime error |
 | `samples/invalid-input.txt` | Invalid input | Invalid input |
 
+## Application model
+
+`ApplicationModel` owns an immutable `ApplicationState` snapshot with applied
+source/name, draft/name, revision, operation results, artifact availability, and
+active operation. It uses only shared contracts and transport validation, not
+FastAPI, browser code, the constructor reader, or the interpreter.
+
+- `start_manual_input` opens a blank draft without replacing applied source;
+  `set_draft` keeps edits, including invalid text, available for correction.
+- `apply_changes` validates and applies edited text. `discard_changes` restores
+  the applied text/name without changing its revision or results.
+- `load_source` accepts already-decoded uploads or canned inputs. Accepted loads
+  and edits increment the revision and clear results/artifacts. Invalid loads
+  preserve applied state and retain rejected text as a correctable draft.
+- Dirty state blocks actions and replacement. Busy state also blocks editing,
+  Apply, and Discard. Source operations require applied source; Execute remains
+  unavailable because no generated code exists.
+- `begin_operation` returns the request containing applied text and revision.
+  `finish_operation(request, result)` records matching results and releases busy
+  state. Controller cleanup must call `abort_operation(request)` if needed.
+  Cleanup and late completion from an older request cannot affect newer work.
+
+Malformed constructor syntax can be applied; the backend reports its input error
+when Lint/Interpret runs. The model checks transport validity, not language syntax.
+Source names are labels; the model never reads or modifies the original file.
+
 ## Current limitations and remaining work
 
-The landing page, restricted reader, and synchronous backend are implemented.
-The supplied `lambda1.py` is unchanged. Backend operations are tested directly
-but are not connected to browser requests. Source editing and revision state
-are not implemented; the caller currently supplies the revision identifier.
+The landing page, reader, backend, and model are implemented and tested separately.
+The supplied `lambda1.py` is unchanged. HTTP actions and browser controls are not
+connected yet. The five-second backend timeout remains planned for Step 5; the
+current synchronous backend must not be used for unbounded programs.
 
-The next steps add model state rules, bounded execution, HTTP workflows, and
-browser controls. The five-second backend timeout is planned, not yet implemented:
-do not use this synchronous adapter for unbounded programs. Type-check/Compile
-remain placeholders and generated-code execution will remain unavailable.
+Type-check/Compile remain placeholders. No generated artifacts are created or
+accepted by this model version; Execute stays unavailable. Artifact support is
+reserved for future development, not implemented as an assignment extension.
 
 Required browser demonstrations, final limitations, and the 200-300 word MVC
 reflection will be completed after the features are tested.
