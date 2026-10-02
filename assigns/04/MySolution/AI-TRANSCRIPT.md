@@ -83,3 +83,20 @@ commit selection remain separate from automated checks. No commit was made.
 - Final verification: 276 tests passed with the existing dependency warning.
   No compiler or generated artifact extension was added. Browser/controller
   integration and timeouts remain pending. Nothing was staged or committed.
+
+## Step 5 review and validation
+
+- User explicitly authorized bounded language execution (Step 5).
+- Codex added a fixed subprocess worker and JSON transport around the existing
+  language adapter. Source remains data; no shell is invoked. Type-check/Compile
+  and Execute behavior are inherited unchanged.
+- Python's official documentation was checked for `subprocess.run` timeout cleanup
+  and `asyncio.to_thread` waiting:
+  https://docs.python.org/3.13/library/subprocess.html and
+  https://docs.python.org/3.13/library/asyncio-task.html.
+- Real tests cover worker language results, a slow-program timeout, a nonterminating
+  expression that reaches the recursion limit, event-loop responsiveness, preserved
+  model state, successful retry, and reaped workers/closed pipes. Failures are injected
+  only for crash/transport/error recovery checks, not to replace real language tools.
+- Final suite: 319 tests passed with the existing dependency warning. HTTP integration
+  and browser checks remain pending. No staging or commits were performed.

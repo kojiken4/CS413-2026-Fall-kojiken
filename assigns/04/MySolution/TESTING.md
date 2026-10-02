@@ -93,6 +93,33 @@ errors; the complete suite then passed. Supplied language semantics and the
 browser/controller code were not changed. Upload-byte decoding, controller
 orchestration, timeout, and browser smoke tests remain pending.
 
+## Step 5 checks
+
+`tests/test_bounded_backend.py` verifies the real subprocess path for Lint and
+Interpret, recursive samples, runtime and input diagnostics, Unicode transport,
+caller-directory independence, and the five-second default. Shorter timeouts are
+injected for the recovery test; normal tests use the default.
+
+A real Fibonacci(40) computation exceeds a one-second test timeout. The child is
+stopped and reaped, source/revision are preserved, the model leaves busy state,
+and Lint on unchanged source plus interpretation of corrected source succeed.
+An async test waits using `asyncio.to_thread` and verifies that the event loop
+continues running while the model blocks conflicting edits.
+
+A genuinely nonterminating recursive LAMBDA expression returns a `RecursionError`
+runtime diagnostic before the default deadline. This is separate from the real
+slow-program timeout test; timeout is not simulated by that recursion case.
+
+Worker crashes, process-creation failure, malformed responses, and a pipe failure
+while a child is alive are injected to verify backend failure handling. Every
+tracked child is reaped and every pipe is closed. Result validation checks identity,
+revision, outcome and data types; Lint results retain `frozenset` semantics.
+Type-check/Compile/Execute never launch workers.
+
+Observed on Python 3.13.14: **319 passed in 2.90 seconds**, exit 0, with the existing
+dependency warning. Controller/browser busy status, timeout recovery UI, and
+real HTTP responsiveness remain pending until their integration steps.
+
 ## Requirement traceability
 
 | Requirement | Required checks | Current status |
@@ -106,7 +133,7 @@ orchestration, timeout, and browser smoke tests remain pending.
 | F7 | Explicit placeholders and disabled Execute explanation | Backend responses tested; controls pending |
 | F8 | Revision increment and results/artifacts invalidation | Model revisions/result clearing tested; artifacts always absent; UI pending |
 | F9 | Operation/revision/outcome, line breaks, literal HTML-like text | Pending |
-| F10 | Busy state, conflicting work, bounded execution, failure/retry | Adapter/model failure/retry and busy guards tested; timeout/HTTP checks pending |
+| F10 | Busy state, conflicting work, bounded execution, failure/retry | Real worker timeout/cleanup, model retry/busy guards and async waiting tested; HTTP/UI checks pending |
 
 The full browser smoke test and clean-checkout setup verification remain pending.
 A landing route response is not evidence that those checks have passed.

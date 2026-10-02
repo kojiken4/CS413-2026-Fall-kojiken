@@ -1,6 +1,6 @@
 # LAMBDA Web Front-End
 
-Assignment 04 implementation, currently at Step 4 (application model).
+Assignment 04 implementation, currently at Step 5 (bounded language execution).
 Requires Python 3.12 or later; setup and tests were verified with Python 3.13.14 on Windows.
 Direct runtime dependencies are pinned in `requirements.txt`; test dependencies
 are in `requirements-dev.txt`.
@@ -100,6 +100,35 @@ contract.
 | `samples/division-by-zero.txt` | Pass | Division-by-zero runtime error |
 | `samples/invalid-input.txt` | Invalid input | Invalid input |
 
+## Execution bounds
+
+`BoundedBackend` in `lambda_web/bounded_backend.py` implements the same backend
+interface, launching a fresh trusted Python worker for each Lint or Interpret.
+Source is JSON data on standard input, not part of a shell command. UTF-8 JSON
+results are validated and free-variable lists are reconstructed as `frozenset`.
+Type-check/Compile/Execute responses stay unchanged and launch no worker.
+
+The default worker timeout is **five seconds**, covering worker startup, imports,
+constructor parsing, language processing, and result transport after OS process
+creation. OS process creation itself cannot always be interrupted, so total
+elapsed time can include that overhead and process cleanup. Timed-out workers
+are killed and waited for; their pipes are closed. Timeouts, crashes, invalid
+responses, and communication failures return `backend_failure`, distinct from
+constructor input errors and language runtime errors.
+
+The source limit remains **64 KiB UTF-8**. The supplied recursive evaluator can
+also reach Python's recursion limit, which is reported as a runtime error.
+The bounded adapter does not change interpreter semantics or implement generated
+code execution. `LambdaBackend` remains the in-process implementation used by
+the worker and direct language tests; it has no standalone execution timeout.
+
+The backend interface is synchronous. In the forthcoming async HTTP controller,
+use `await asyncio.to_thread(backend.interpret, source, revision)` (and likewise
+for Lint) so waiting does not block the event loop. Model work starts with
+`begin_operation`; completion and cleanup use the same request. Tests exercise
+this pattern, timeout recovery, preserved source, and successful retry without
+claiming that HTTP/browser integration exists yet.
+
 ## Application model
 
 `ApplicationModel` owns an immutable `ApplicationState` snapshot with applied
@@ -128,10 +157,10 @@ Source names are labels; the model never reads or modifies the original file.
 
 ## Current limitations and remaining work
 
-The landing page, reader, backend, and model are implemented and tested separately.
+The landing page, reader, model, and bounded backend are implemented and tested.
 The supplied `lambda1.py` is unchanged. HTTP actions and browser controls are not
-connected yet. The five-second backend timeout remains planned for Step 5; the
-current synchronous backend must not be used for unbounded programs.
+connected yet; server-level responsiveness and browser recovery will be verified
+after that integration.
 
 Type-check/Compile remain placeholders. No generated artifacts are created or
 accepted by this model version; Execute stays unavailable. Artifact support is

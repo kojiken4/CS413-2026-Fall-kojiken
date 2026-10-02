@@ -1,6 +1,6 @@
 """Adapt the supplied LAMBDA language tools to revision-associated results.
 
-This synchronous adapter has no execution timeout yet (planned for Step 5).
+This is the in-process language implementation used inside bounded workers.
 It is independent of HTTP, browser rendering, and application state.
 """
 
