@@ -1,6 +1,6 @@
 # Architecture
 
-## Current components (Step 1)
+## Current components (Step 2)
 
 ```mermaid
 flowchart LR
@@ -11,8 +11,8 @@ flowchart LR
 ```
 
 This is the actual dependency graph for the landing page. The model and backend
-modules currently declare boundaries only; they do not implement MVC state or
-language integration yet. `lambda1.py` is the verbatim supplied language module.
+modules still declare boundaries only. The separate restricted reader now
+constructs expressions, but MVC state and language operations are not connected. `lambda1.py` is the verbatim supplied language module.
 
 | Responsibility | Implementation | Current status |
 | --- | --- | --- |
@@ -20,8 +20,25 @@ language integration yet. `lambda1.py` is the verbatim supplied language module.
 | Controller | `lambda_web/controller.py`, `landing_page` | Handles GET / and requests the view |
 | View | `lambda_web/view.py` and `templates/index.html` | Returns static markup without analysis |
 | Model | `lambda_web/model.py` | Reserved; source and state rules follow in Step 4 |
-| Backend adapter | `lambda_web/backend.py` | Reserved; reader and operations follow in Steps 2-3 |
+| Backend adapter | `lambda_web/backend.py` | Reserved; operations follow in Step 3 |
+| Constructor reader | `lambda_web/constructor_reader.py`, `read_constructor` | AST whitelist, field validation, and 64 KiB input bound |
 | Supplied language tools | `lambda_web/lambda1.py` | Copied unchanged; not exposed to requests |
+
+## Implemented reader dependency
+
+```mermaid
+flowchart LR
+    Reader[constructor_reader.py: read_constructor] --> AST[Python ast parser]
+    Reader --> Language[lambda1.py: supplied expression constructors]
+```
+
+This reader is independent of the HTTP/view/model modules. `validate_source`
+checks text encoding, size, and emptiness without parsing. `read_constructor`
+additionally validates the AST and returns one expression, or raises
+`ConstructorInputError`. It performs no free-variable analysis or evaluation.
+The adapter will call the reader in Step 3; this dependency is not wired yet.
+Only concrete supplied expression constructors are allowlisted. AST nodes are
+walked as data, never compiled into executable Python code.
 
 ## Chosen direction
 

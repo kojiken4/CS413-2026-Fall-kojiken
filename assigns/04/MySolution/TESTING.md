@@ -21,13 +21,32 @@ Pytest emitted one dependency deprecation warning: Starlette 1.7.0 recommends
 HTTPX 0.28.1; this warning does not indicate an application failure.
 The HTTP check is a real server request, not a visual browser smoke test.
 
+## Step 2 checks
+
+`tests/test_constructor_reader.py` tests all 13 expression constructors with
+positional and named arguments, missing/extra arguments and wrong field types,
+comments, multiline input, mixed arguments, signed integers, Unicode and escaped
+strings, duplicate/unknown fields, and rejected Python execution syntax.
+
+Boundary cases include exactly 64 KiB, exceeding the limit, multibyte UTF-8,
+whitespace-only input, nontext input, invalid Unicode, and excessive nesting.
+A test blocks Python `eval`/`exec` and LAMBDA evaluation while reading a closed
+division-by-zero constructor. A rejected file-write expression creates no file.
+
+Observed: full suite **129 passed**, exit 0, on Python 3.13.14. The existing
+Starlette/HTTPX deprecation warning remains. The first run caught an incorrectly
+escaped newline in a test fixture, which was corrected. One invocation from the
+repository root failed imports; the documented invocation from `MySolution`
+passed. Constructor parsing and transport checks are not evidence of completed
+Lint, Interpret, editing, or browser workflows.
+
 ## Requirement traceability
 
 | Requirement | Required checks | Current status |
 | --- | --- | --- |
 | F1 | Upload, manual entry, editable factorial/Fibonacci, source name/revision | Pending |
 | F2 | Initial typing, editing, Apply/Discard, dirty-state guards | Pending |
-| F3 | Empty/UTF-8/size rejection, preservation of state and edits | Pending |
+| F3 | Empty/UTF-8/size rejection, preservation of state and edits | Reader text/size checks tested; upload/state checks pending |
 | F4 | Button order, applied-source prerequisite, disabled Execute | Pending |
 | F5 | Real Lint, lexical scope, deterministic undeclared names | Pending |
 | F6 | Real evaluation, arithmetic/examples/base cases, input/runtime errors | Pending |

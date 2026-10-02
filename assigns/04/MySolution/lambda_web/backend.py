@@ -1,5 +1,6 @@
-"""Language-tool adapter boundary, to be implemented in Steps 2 and 3.
+"""Language-tool adapter boundary; operations will be added in Step 3.
 
-The adapter will use the supplied lambda1 module behind a restricted reader.
-It will not depend on HTTP requests or view rendering.
+constructor_reader.read_constructor now converts validated source into the
+supplied lambda1 expression types. The adapter will use it for Lint/Interpret
+without depending on HTTP requests or view rendering.
 """
