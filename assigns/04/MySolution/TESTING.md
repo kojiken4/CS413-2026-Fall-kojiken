@@ -223,6 +223,11 @@ The existing Starlette/HTTPX warning appeared during these controller checks.
 
 ## Requirement traceability
 
+Before Step 9, equivalent macOS Terminal instructions were added for environment
+creation, installation, startup, default tests, dependency checks, and optional
+browser tests. Paths and environment-variable syntax were reviewed against Python
+and Playwright documentation; no macOS execution or platform validation is claimed.
+
 | Requirement | Required checks | Current status |
 | --- | --- | --- |
 | F1 | Upload, manual entry, editable factorial/Fibonacci, source name/revision | Model/HTTP tests and browser source-menu/name/revision checks passed |

@@ -163,3 +163,13 @@ commit selection remain separate from automated checks. No commit was made.
   actual ZeroDivisionError wording; no code changes were necessary.
 - Clean-checkout verification remains for Step 9. No implementation extension,
   test changes, staging, or commits were performed.
+
+## macOS instructions before Step 9
+
+- User requested Macintosh equivalents for the documented commands.
+- Added macOS Terminal setup/start, default test/dependency, and opt-in browser
+  commands beside the PowerShell versions. Python's venv and Playwright browser
+  documentation were consulted for paths and browser setup.
+- Documentation explicitly states that the macOS commands were reviewed, not
+  executed on a Mac. Application behavior and dependencies were unchanged;
+  Step 9 was not started. Nothing was staged or committed.

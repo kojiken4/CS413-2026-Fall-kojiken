@@ -11,7 +11,7 @@ Pinned declarations are in [requirements.txt](requirements.txt) and
 
 ## Setup and start
 
-Run from the repository root in PowerShell:
+**Windows (PowerShell):** run from the repository root:
 
 ```powershell
 Set-Location assigns/04/MySolution
@@ -20,6 +20,23 @@ py -3.13 -m venv .venv
 .\.venv\Scripts\python.exe -m uvicorn lambda_web.app:create_app --factory --host 127.0.0.1 --port 8000 --workers 1
 ```
 
+**macOS (Terminal, zsh or bash):** with Python 3.13 installed and available as
+`python3.13`, run from the repository root:
+
+```sh
+python3.13 --version
+cd assigns/04/MySolution
+python3.13 -m venv .venv
+.venv/bin/python -m pip install -r requirements-dev.txt
+.venv/bin/python -m uvicorn lambda_web.app:create_app --factory --host 127.0.0.1 --port 8000 --workers 1
+```
+
+If using another supported Python version, replace `python3.13` with that
+interpreter's command; verify it is Python 3.12 or later. macOS environments use
+`bin/python` rather than Windows' `Scripts/python.exe`, as described in
+[Python's virtual-environment documentation](https://docs.python.org/3.13/library/venv.html).
+The macOS commands have been reviewed but not executed on a Mac.
+
 Open [the application](http://127.0.0.1:8000/). Stop with Ctrl+C.
 Keep the server on loopback with **one worker**. Activation is unnecessary.
 Virtual environments and caches are ignored by Git. For running the application
@@ -27,14 +44,22 @@ without test tools, install `requirements.txt` instead.
 
 ## Tests
 
-From `MySolution`:
+From `MySolution`, **Windows (PowerShell):**
 
 ```powershell
 .\.venv\Scripts\python.exe -m pytest -q
 .\.venv\Scripts\python.exe -m pip check
 ```
 
-The default suite skips the seven opt-in browser tests. To run them:
+**macOS (Terminal):**
+
+```sh
+.venv/bin/python -m pytest -q
+.venv/bin/python -m pip check
+```
+
+The default suite skips the seven opt-in browser tests. To run them on
+**Windows (PowerShell):**
 
 ```powershell
 .\.venv\Scripts\python.exe -m playwright install chromium
@@ -43,11 +68,23 @@ $env:LAMBDA_BROWSER_TESTS = "1"
 Remove-Item Env:LAMBDA_BROWSER_TESTS
 ```
 
+**macOS (Terminal):**
+
+```sh
+.venv/bin/python -m playwright install chromium
+LAMBDA_BROWSER_TESTS=1 .venv/bin/python -m pytest tests/test_browser.py -q
+```
+
+The macOS environment-variable assignment applies only to that test command;
+no cleanup command is needed. Chromium installation follows
+[Playwright's browser setup instructions](https://playwright.dev/python/docs/browsers).
+
 Alternatively, skip the Chromium download and set
 `$env:LAMBDA_BROWSER_CHANNEL = "msedge"` before running browser
-tests to use installed Edge. Remove that variable afterward with
+tests in PowerShell to use installed Edge. Remove that variable afterward with
 `Remove-Item Env:LAMBDA_BROWSER_CHANNEL`. Each browser test starts
-and stops its own loopback server.
+and stops its own loopback server. The macOS equivalent, if Edge is installed, is
+`LAMBDA_BROWSER_TESTS=1 LAMBDA_BROWSER_CHANNEL=msedge .venv/bin/python -m pytest tests/test_browser.py -q`.
 
 Observed in the development environment: **364 default tests passed** and
 **all seven browser tests passed** separately. Details, browser observations,
