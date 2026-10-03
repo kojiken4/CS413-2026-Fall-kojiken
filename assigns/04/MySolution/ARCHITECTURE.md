@@ -1,11 +1,17 @@
 # Architecture
 
-## Current components (Step 5)
+## Current components (Step 6)
 
 ```mermaid
 flowchart LR
     Browser --> App[app.py: create_app]
-    App --> Controller[controller.py: router]
+    App --> Controller[controller.py: ApplicationController]
+    App --> Model
+    App --> Bounded
+    Controller --> Model
+    Controller --> Contracts
+    Controller --> Validation
+    Controller -->|injected LanguageBackend| Bounded
     Controller --> View[view.py: render_landing_page]
     View --> HTML[templates/index.html]
     Backend[backend.py: LambdaBackend] --> Contracts[contracts.py]
@@ -26,14 +32,14 @@ flowchart LR
     Transport --> Contracts
 ```
 
-This is the implemented dependency graph. Backend operations can be called
-independently, but the HTTP controller still serves only the landing page.
-The model now owns state transitions independently; HTTP orchestration is still pending.
+This is the implemented dependency graph for the default composition. The app
+injects an independent model and bounded backend into its controller. Source and
+action routes return state/result JSON; the landing view stays static until Step 7.
 
 | Responsibility | Implementation | Current status |
 | --- | --- | --- |
-| Composition | `lambda_web/app.py`, `create_app` | Creates FastAPI and registers routes |
-| Controller | `lambda_web/controller.py`, `landing_page` | Requests the landing view; tool dispatch pending |
+| Composition | `lambda_web/app.py`, `create_app` | Injects model/backend, registers routes/errors, waits for work at shutdown |
+| Controller | `lambda_web/controller.py`, `ApplicationController` | Handles sources/actions, coordinates model/backend, returns snapshots/results |
 | View | `lambda_web/view.py`, `templates/index.html` | Static markup without language analysis |
 | Model | `lambda_web/model.py`, `ApplicationModel` | Source/revision, editing, busy, and result rules |
 | Backend adapter | `lambda_web/backend.py`, `LambdaBackend` | Real Lint/Interpret and explicit unavailable operations |
@@ -91,8 +97,11 @@ transport after OS process creation; process creation overhead and cleanup can
 extend total elapsed time. Python kills and waits for timed-out children and closes
 pipe handles. Timeouts and worker/transport failures return `backend_failure`;
 normal language diagnostics retain their original outcomes. Placeholder methods
-run in-process without workers. Async controllers must wait with `asyncio.to_thread`;
-this usage and model recovery are tested, but HTTP integration is still pending.
+run in-process without workers. The controller uses `asyncio.to_thread` and shields
+its owned task from HTTP-wait cancellation. Cleanup belongs to the worker thread:
+busy state persists until completion, even if the requesting client disconnects.
+Shutdown waits for owned tasks. The event loop remains available for state requests;
+model guards reject conflicting edits/actions. These HTTP behaviors are tested.
 
 ## Model state and transitions
 
@@ -116,21 +125,28 @@ Generated artifacts are reserved but rejected in this version; Execute is blocke
 
 ## Load -> Lint -> Interpret trace
 
-The model and backend steps below are implemented separately. Controller/view
-integration remains planned; no browser workflow is claimed yet.
+The following HTTP/model/backend trace is implemented. Browser controls and
+literal result rendering will connect to these responses in Step 7.
 
-1. Controller asks the model to accept source, create a revision, and clear old
-   results/artifacts; rejected changes preserve applied state.
-2. On Lint, controller checks model prerequisites and passes applied text/revision
-   to the adapter. Reader builds the expression; `d0exp_fvset` finds free variables.
+1. Upload/canned routes load decoded text, or draft/Apply routes accept an edit.
+   The model creates a revision and clears old results/artifacts. Rejection
+   preserves applied state; empty/rejected edits remain correctable. Invalid
+   UTF-8/oversized uploads keep the existing draft. Upload replacement is checked
+   before reading and again when accepting source to prevent races with edits.
+2. On `POST /api/actions/lint`, the model atomically checks prerequisites and
+   starts work. The controller passes applied text/revision to the adapter in a
+   thread. Reader builds the expression; `d0exp_fvset` finds free variables.
 3. A closed expression returns success. `D0Evar("x")` returns `language_error`
    listing `x`; controller stores the revision-associated result for the view.
 4. Interpret is independent. Reader builds the applied expression again and the
    evaluator uses an empty environment. `D0Evar("x")` yields `D0V000()` and a
    `runtime_error`. Closed division by zero also fails despite passing Lint.
-5. Controller stores the result through the model; view displays action, revision,
-   outcome, and literal text. Model guards and bounded work exist; HTTP busy
-   status follows in Step 6.
+5. Controller validates the backend result and stores it through the model using
+   the original request. Unexpected failures become `backend_failure`. Completion
+   releases busy state and permits retry; applied source remains intact.
+6. Action responses return state and result with action/revision/outcome/text.
+   `GET /api/state` reports busy status, results, and enabled actions. The future
+   browser view will display these literal values; Execute remains unavailable.
 
 ## Design decisions
 

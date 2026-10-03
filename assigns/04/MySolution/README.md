@@ -1,6 +1,6 @@
 # LAMBDA Web Front-End
 
-Assignment 04 implementation, currently at Step 5 (bounded language execution).
+Assignment 04 implementation, currently at Step 6 (HTTP controller integration).
 Requires Python 3.12 or later; setup and tests were verified with Python 3.13.14 on Windows.
 Direct runtime dependencies are pinned in `requirements.txt`; test dependencies
 are in `requirements-dev.txt`.
@@ -67,8 +67,8 @@ Invalid input raises `ConstructorInputError` with a diagnostic.
 
 Source must be nonempty UTF-8 text of at most **65,536 bytes (64 KiB)**, including
 comments and whitespace. The reader reports parser nesting limits or Python
-recursion limits as input errors. Upload-byte decoding will be implemented with
-the HTTP workflow; the current reader accepts already-decoded text.
+recursion limits as input errors. Uploads are decoded strictly as UTF-8 by the
+controller; the reader accepts already-decoded text.
 
 ## Language-tool backend
 
@@ -86,8 +86,8 @@ distinct outcomes. An exact `D0V000()` directly or inside a pair is a runtime er
 
 Type-check and Compile return `not_implemented`, without parsing source or
 producing artifacts. Execute returns `unavailable`; it does not compile or
-interpret source. Applied-source and UI prerequisites will be enforced in later
-steps. See `ARCHITECTURE.md` for the replaceable interface and future artifact
+interpret source. Applied-source, dirty, and busy prerequisites are enforced by
+the model through HTTP routes. See `ARCHITECTURE.md` for the future artifact
 contract.
 
 ### Sample inputs
@@ -122,12 +122,45 @@ The bounded adapter does not change interpreter semantics or implement generated
 code execution. `LambdaBackend` remains the in-process implementation used by
 the worker and direct language tests; it has no standalone execution timeout.
 
-The backend interface is synchronous. In the forthcoming async HTTP controller,
-use `await asyncio.to_thread(backend.interpret, source, revision)` (and likewise
-for Lint) so waiting does not block the event loop. Model work starts with
-`begin_operation`; completion and cleanup use the same request. Tests exercise
-this pattern, timeout recovery, preserved source, and successful retry without
-claiming that HTTP/browser integration exists yet.
+The backend interface is synchronous. The controller runs actions using
+`asyncio.to_thread`, so waiting does not block the event loop. Model work starts
+with `begin_operation`; completion and cleanup use the same request. Cancelling
+an HTTP wait does not cancel its worker or release busy state prematurely.
+Application shutdown waits for controller-owned work. Tests cover timeout
+recovery, HTTP responsiveness, preserved source, and successful retry.
+
+## HTTP workflows
+
+The landing page still has no interactive controls; Step 7 will connect the
+browser to these implemented routes. JSON field names are shown below.
+
+| Method | Route | Input / behavior |
+| --- | --- | --- |
+| GET | `/api/state` | Current model snapshot |
+| POST | `/api/source/draft` | JSON `source` string; retain editable text |
+| POST | `/api/source/manual` | Open a blank manual draft |
+| POST | `/api/source/apply` | Validate and apply draft |
+| POST | `/api/source/discard` | Restore applied source |
+| POST | `/api/source/canned` | JSON `name`: `factorial` or `fibonacci` |
+| POST | `/api/source/upload` | Multipart `file`: local UTF-8 text |
+| POST | `/api/actions/{operation}` | `lint`, `interpret`, `typecheck`, `compile`, or unavailable `execute` |
+
+Source routes return a state snapshot. Action responses contain `state` and
+`result`, including operation, source revision, outcome, output, free variables,
+and a null artifact. JSON transports output literally and preserves line breaks;
+browser rendering remains to be implemented.
+
+Invalid source returns HTTP 400, model conflicts 409, and invalid request fields
+422, with `detail` and unchanged applied `state`. Unknown canned names return
+404. Language/tool outcomes return HTTP 200 with their distinct result outcome.
+Rejected text edits and empty uploads remain correctable drafts. Undecodable or
+oversized uploads preserve the existing draft as well as applied state, rather
+than substituting an incomplete file prefix. Uploads are read to at most 65,537
+bytes for the application size check and closed after handling; multipart parsing
+may spool uploaded data before this check. Original local files are never edited.
+
+`create_app(model=..., backend=...)` supports independent state and a replacement
+backend without changing the view. The default backend is `BoundedBackend`.
 
 ## Application model
 
@@ -157,10 +190,10 @@ Source names are labels; the model never reads or modifies the original file.
 
 ## Current limitations and remaining work
 
-The landing page, reader, model, and bounded backend are implemented and tested.
-The supplied `lambda1.py` is unchanged. HTTP actions and browser controls are not
-connected yet; server-level responsiveness and browser recovery will be verified
-after that integration.
+The landing page, reader, model, bounded backend, and HTTP controller are
+implemented and tested. The supplied `lambda1.py` is unchanged. Real loopback
+requests verified server responsiveness during interpretation and timeout/retry.
+Browser controls and visual recovery checks remain for Step 7.
 
 Type-check/Compile remain placeholders. No generated artifacts are created or
 accepted by this model version; Execute stays unavailable. Artifact support is

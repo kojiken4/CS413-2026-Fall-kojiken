@@ -100,3 +100,22 @@ commit selection remain separate from automated checks. No commit was made.
   only for crash/transport/error recovery checks, not to replace real language tools.
 - Final suite: 319 tests passed with the existing dependency warning. HTTP integration
   and browser checks remain pending. No staging or commits were performed.
+
+## Step 6 review and validation
+
+- User authorized HTTP controller integration, paused work, and then explicitly
+  resumed Step 6 with a request to explain its status and remaining scope first.
+- Codex connected an injected model/backend to source, state, and action routes.
+  The default backend is bounded; uploaded bytes are decoded strictly as UTF-8
+  with the existing size limit. No browser controls or new language tools were added.
+- Tests cover real tools through HTTP, substituted backend dispatch, independent
+  state, input/conflict guards, revision invalidation, malformed backend responses,
+  cancellation, upload races, and retry. Controller work uses a thread and a
+  shielded task; cleanup waits for actual completion, not just the HTTP request.
+- The paused run had 363 passes and a fixture failure before invalid Unicode
+  reached the application. The resumed implementation uses escaped JSON for that
+  fixture. Shutdown cleanup also runs through a `finally` block.
+- Final suite: 364 passed with the existing dependency warning. A real loopback
+  server verified source/action workflows, responsive busy-state requests, the
+  five-second timeout, source preservation, and successful retry; it was stopped
+  afterward. Browser checks remain for Step 7. Nothing was staged or committed.

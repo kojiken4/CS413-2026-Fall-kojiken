@@ -108,6 +108,11 @@ class ApplicationModel:
                 raise
             self._accept_source(source, name)
 
+    def check_source_replacement(self) -> None:
+        """Check before asynchronous upload work; load_source checks again."""
+        with self._lock:
+            self._require_replace_allowed()
+
     def begin_operation(self, operation: Operation) -> OperationRequest:
         with self._lock:
             self._require_replace_allowed()

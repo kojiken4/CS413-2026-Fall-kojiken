@@ -120,20 +120,54 @@ Observed on Python 3.13.14: **319 passed in 2.90 seconds**, exit 0, with the exi
 dependency warning. Controller/browser busy status, timeout recovery UI, and
 real HTTP responsiveness remain pending until their integration steps.
 
+## Step 6 checks
+
+`tests/test_controller.py` exercises HTTP source workflows, strict request fields,
+upload decoding/size boundaries and closure, correctable rejected edits, source
+names/revisions, Apply/Discard, and dirty/busy prerequisites. Uploaded file edits
+leave the original local file unchanged. A suspended upload rechecks replacement
+permission after reading, preserving a draft edited while the read was pending.
+
+An injected backend records dispatch without changing the view; independent app
+instances have independent models. Malformed/stale backend results, unexpected
+exceptions, and unsupported artifacts become failure results, preserving source
+and allowing retry. Literal HTML-like output and line breaks survive JSON transport
+with operation/revision/outcome metadata; this does not verify browser rendering.
+
+Real bounded tools are tested through HTTP for factorial/Fibonacci, undeclared
+variables, invalid constructors, runtime errors, placeholders, and timeout/retry.
+Async request tests verify responsive state reads, conflict rejection, and HTTP
+cancellation without prematurely releasing busy state. Work is recorded and
+cleaned up even when its requesting HTTP task is cancelled.
+
+Observed on Python 3.13.14: **364 passed in 5.17 seconds**, exit 0, with the existing
+dependency warning. The resumed run fixed the invalid-Unicode test fixture:
+HTTPX could not encode its lone surrogate before sending the request. Escaped
+JSON now reaches the route and verifies rejected draft preservation correctly.
+
+A temporary real Uvicorn server bound to `127.0.0.1` with one worker verified
+manual entry/Apply, multipart upload, both canned samples, Lint/Interpret,
+Type-check/Compile placeholders, and unavailable Execute. During Fibonacci(40),
+a busy-state GET completed in **0.016 seconds** and Discard returned 409. The
+default five-second timeout returned `backend_failure`, preserved source, restored
+idle state, and allowed a subsequent interpretation returning `D0Vint(arg1=42)`.
+Verification exited 0 and stopped that exact server process. This is HTTP evidence,
+not a visual browser smoke test.
+
 ## Requirement traceability
 
 | Requirement | Required checks | Current status |
 | --- | --- | --- |
-| F1 | Upload, manual entry, editable factorial/Fibonacci, source name/revision | Model manual/load/name/revision transitions tested; UI pending |
-| F2 | Initial typing, editing, Apply/Discard, dirty-state guards | Model tested; HTTP/browser workflow pending |
-| F3 | Empty/UTF-8/size rejection, preservation of state and edits | Reader/model text/size/state preservation tested; upload decoding pending |
-| F4 | Button order, applied-source prerequisite, disabled Execute | Model prerequisites/Execute guard tested; controls pending |
-| F5 | Real Lint, lexical scope, deterministic undeclared names | Backend tested; browser reporting pending |
-| F6 | Real evaluation, arithmetic/examples/base cases, input/runtime errors | Backend tested; browser display pending |
-| F7 | Explicit placeholders and disabled Execute explanation | Backend responses tested; controls pending |
-| F8 | Revision increment and results/artifacts invalidation | Model revisions/result clearing tested; artifacts always absent; UI pending |
-| F9 | Operation/revision/outcome, line breaks, literal HTML-like text | Pending |
-| F10 | Busy state, conflicting work, bounded execution, failure/retry | Real worker timeout/cleanup, model retry/busy guards and async waiting tested; HTTP/UI checks pending |
+| F1 | Upload, manual entry, editable factorial/Fibonacci, source name/revision | Model/HTTP workflows tested; browser controls pending |
+| F2 | Initial typing, editing, Apply/Discard, dirty-state guards | Model/HTTP guards and original-file preservation tested; browser pending |
+| F3 | Empty/UTF-8/size rejection, preservation of state and edits | Reader/model/HTTP rejection and correction tested; browser pending |
+| F4 | Button order, applied-source prerequisite, disabled Execute | HTTP prerequisites/Execute guard tested; controls pending |
+| F5 | Real Lint, lexical scope, deterministic undeclared names | Backend/HTTP tested; browser reporting pending |
+| F6 | Real evaluation, arithmetic/examples/base cases, input/runtime errors | Backend/HTTP tested; browser display pending |
+| F7 | Explicit placeholders and disabled Execute explanation | HTTP placeholder/unavailable responses tested; controls pending |
+| F8 | Revision increment and results/artifacts invalidation | Model/HTTP revisions/result clearing tested; artifacts always absent; browser pending |
+| F9 | Operation/revision/outcome, line breaks, literal HTML-like text | Literal JSON transport and metadata tested; browser rendering pending |
+| F10 | Busy state, conflicting work, bounded execution, failure/retry | Model/HTTP conflict and cancellation tests, real server responsiveness and timeout/retry passed; UI pending |
 
 The full browser smoke test and clean-checkout setup verification remain pending.
 A landing route response is not evidence that those checks have passed.
