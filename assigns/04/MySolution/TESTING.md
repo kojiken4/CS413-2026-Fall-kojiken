@@ -4,10 +4,10 @@
 
 | Check | Recorded result | Evidence |
 | --- | --- | --- |
-| Default suite | 364 passed, 7 opt-in browser tests skipped | Step 7 below |
-| Real-browser suite | All 7 passed on Edge 154.0.4258.53 | Step 7 browser observations and F1–F10 mapping |
-| Dependency and JavaScript checks | Passed | Step 7 below |
-| Clean-checkout setup/tests | Not yet performed | Reserved for Step 9 |
+| Default suite | 364 passed, 7 opt-in browser tests skipped | Step 9 clean checkout |
+| Real-browser suite | All 7 passed on fresh Chromium 140.0.7339.16; prior Edge checks passed | Steps 7 and 9, F1–F10 mapping |
+| Dependency and JavaScript checks | Passed | Fresh dependency check in Step 9; JavaScript syntax/browser checks in Step 7 |
+| Clean-checkout setup/tests | Passed on Windows/Python 3.13.14 | Step 9 below |
 
 Earlier step sections are historical records of incremental checks, including
 what was still pending at each stage. They do not describe current omissions.
@@ -221,6 +221,41 @@ an initial diagnostic assertion was too narrow and was corrected to check the
 actual exception class. No application source, dependencies, or tests were changed.
 The existing Starlette/HTTPX warning appeared during these controller checks.
 
+## Step 9 clean-checkout verification
+
+On **October 2, 2026**, a separate local clone of commit
+`669b4d4c422b54b5af86036412f869df62e4c26c` was created with
+`git clone --no-hardlinks --single-branch`. Its tracked working tree was clean
+before and after verification. A new `.venv` was created with the documented
+`py -3.13 -m venv .venv`; it did not reuse the development environment.
+The clone and generated dependencies/browser cache are inside the original
+solution's ignored `.venv/`, excluded from the submission.
+
+| Check in isolated checkout | Observed |
+| --- | --- |
+| Install `requirements-dev.txt` into fresh environment | Passed, exit 0; all six direct pinned versions matched |
+| Documented `python -m pytest -q` | **364 passed, 7 skipped in 5.36 seconds**, exit 0 |
+| `python -m pip check` | No broken requirements, exit 0 |
+| `python -m playwright install chromium` | Fresh Chromium 140.0.7339.16 installed, exit 0 |
+| Opt-in `tests/test_browser.py` using fresh Chromium | **All 7 passed in 20.70 seconds**, exit 0 |
+| Loopback Uvicorn startup, page and static-asset requests | Passed on port 8001 |
+| Manual draft/Apply/Interpret through real HTTP | `D0Vint(arg1=42)`, passed |
+| Supplied interpreter byte comparison | Exact match; SHA256 unchanged |
+| Documentation local links/fences and reflection bound | Passed; reflection remains 249 words |
+| Tracked submission files | No virtual environments, caches, or bytecode tracked |
+
+Port 8000 was already occupied by an existing Python listener. Its process was
+left running; the documented startup was tested with only the port changed to
+8001, and an alternate-port note was added to README. Temporary verification
+servers and browsers were stopped. Browser tests repeat the F1–F10 cases recorded
+in Step 7, including literal rendering, real tools, draft races, rejection,
+timeout recovery, and retry, with no uncaught browser script errors.
+
+The existing Starlette/HTTPX deprecation warning remains. macOS instructions were
+reviewed but not executed; macOS and manual screen-reader behavior are unverified.
+Final edits after this snapshot only record these checks and the alternate-port
+instruction; application source and dependencies were not changed.
+
 ## Requirement traceability
 
 Before Step 9, equivalent macOS Terminal instructions were added for environment
@@ -241,5 +276,5 @@ and Playwright documentation; no macOS execution or platform validation is claim
 | F9 | Operation/revision/outcome, line breaks, literal HTML-like text | JSON tests and browser metadata/literal multiline rendering passed |
 | F10 | Busy state, conflicting work, bounded execution, failure/retry | Model/HTTP tests, real server checks, and browser timeout/network-error/retry checks passed |
 
-Clean-checkout setup verification remains for Step 9. Browser checks above use
-the current working environment, not a clean checkout.
+Step 7 records the development-environment browser run; Step 9 independently
+verifies the committed application from a clean checkout and fresh environment.

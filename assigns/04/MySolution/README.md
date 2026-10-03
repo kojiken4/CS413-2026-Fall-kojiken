@@ -39,6 +39,8 @@ The macOS commands have been reviewed but not executed on a Mac.
 
 Open [the application](http://127.0.0.1:8000/). Stop with Ctrl+C.
 Keep the server on loopback with **one worker**. Activation is unnecessary.
+If port 8000 is already in use, change `--port 8000` to an unused port such as
+`--port 8001` and open `http://127.0.0.1:8001/` instead.
 Virtual environments and caches are ignored by Git. For running the application
 without test tools, install `requirements.txt` instead.
 
@@ -86,10 +88,11 @@ tests in PowerShell to use installed Edge. Remove that variable afterward with
 and stops its own loopback server. The macOS equivalent, if Edge is installed, is
 `LAMBDA_BROWSER_TESTS=1 LAMBDA_BROWSER_CHANNEL=msedge .venv/bin/python -m pytest tests/test_browser.py -q`.
 
-Observed in the development environment: **364 default tests passed** and
-**all seven browser tests passed** separately. Details, browser observations,
-and F1–F10 mappings are in [TESTING.md](TESTING.md). Clean-checkout verification
-remains for Step 9; these results do not claim it has been completed.
+Clean-checkout verification on Windows/Python 3.13.14 passed: **364 default tests**
+and **all seven browser tests** separately, using freshly installed Chromium
+140.0.7339.16. Installation, dependency checks, loopback startup, and real requests
+also passed. The verified checkout is commit `669b4d4`; final verification
+details and F1–F10 mappings are in [TESTING.md](TESTING.md).
 
 ## Using the interface
 
@@ -177,8 +180,8 @@ Malformed constructor syntax may be applied, then diagnosed by Lint/Interpret.
   connection and retry Apply. If initial connection fails, restart the server
   and reload the page.
 - Tests emit one recorded Starlette/HTTPX deprecation warning. Browser checks
-  used Edge on Windows; other browsers/platforms and manual screen-reader use
-  have not been verified.
+  used Edge and Chromium on Windows; other browsers/platforms and manual
+  screen-reader use have not been verified.
 
 ## MVC reflection
 

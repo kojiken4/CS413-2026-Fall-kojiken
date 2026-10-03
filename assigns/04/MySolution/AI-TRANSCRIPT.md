@@ -173,3 +173,22 @@ commit selection remain separate from automated checks. No commit was made.
 - Documentation explicitly states that the macOS commands were reviewed, not
   executed on a Mac. Application behavior and dependencies were unchanged;
   Step 9 was not started. Nothing was staged or committed.
+
+## Step 9 final verification
+
+- User authorized clean-checkout verification. Codex cloned committed revision
+  `669b4d4` into an isolated ignored directory, created a fresh Python 3.13.14
+  environment, and installed the documented dependencies. The original and
+  verification tracked working trees were clean before verification.
+- Fresh setup, dependency consistency, and the default suite passed: 364 tests
+  passed with seven opt-in browser tests skipped. Fresh Chromium installation
+  passed, and all seven real-browser smoke tests passed against isolated servers.
+- Port 8000 was occupied. The existing Python listener was preserved; startup,
+  static assets, and real manual interpretation were verified on port 8001.
+  README now explains choosing an unused port.
+- Interpreter bytes, documentation links/fences/reflection length, and tracked
+  submission contents were checked. Verification servers/browsers were stopped.
+  The existing dependency warning and unverified macOS/manual screen-reader
+  behavior remain documented.
+- Only README, TESTING, and this record were updated with verification evidence.
+  No feature extensions, staging, or commits were performed.
