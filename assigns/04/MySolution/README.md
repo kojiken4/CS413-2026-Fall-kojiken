@@ -1,6 +1,6 @@
 # LAMBDA Web Front-End
 
-Assignment 04 implementation, currently at Step 6 (HTTP controller integration).
+Assignment 04 implementation, currently at Step 7 (browser interface).
 Requires Python 3.12 or later; setup and tests were verified with Python 3.13.14 on Windows.
 Direct runtime dependencies are pinned in `requirements.txt`; test dependencies
 are in `requirements-dev.txt`.
@@ -35,6 +35,40 @@ From `MySolution`:
 ```powershell
 .\.venv\Scripts\python.exe -m pytest -q
 ```
+
+The default suite skips opt-in browser smoke tests. To run them with Playwright's
+Chromium browser, from the same directory:
+
+```powershell
+.\.venv\Scripts\python.exe -m playwright install chromium
+$env:LAMBDA_BROWSER_TESTS = "1"
+.\.venv\Scripts\python.exe -m pytest tests/test_browser.py -q
+Remove-Item Env:LAMBDA_BROWSER_TESTS
+```
+
+Alternatively, use installed Edge by setting
+`$env:LAMBDA_BROWSER_CHANNEL = "msedge"` before the browser test command,
+without downloading Chromium. Remove that variable afterward as well.
+Each browser test starts and stops an independent loopback server.
+
+## Using the interface
+
+Choose an item in **Load source**, then press **Load source**. Choose File opens
+the local file chooser, Manual input opens a blank draft, and the two canned
+examples load editable expressions. Initial typing also works without selecting
+Manual input. Source name and applied revision appear above the editor.
+
+Typing updates the draft without applying it. Press **Apply changes** to create
+a revision and clear previous results, or **Discard changes** to restore applied
+text. While edits are unapplied, tool actions and source replacement are disabled.
+Rejected edits remain in the editor for correction. Results show action, source
+revision, outcome, and literal text; line breaks are preserved.
+
+Run **Lint** or **Interpret** independently after applying or loading source.
+During requests, controls communicate busy status and prevent conflicting work;
+completion or failure restores availability. A network error preserves editor
+text; when the connection returns, retry Apply to synchronize pending edits.
+If the initial connection fails, restore the server and reload the page.
 
 ## Constructor-input format
 
@@ -131,8 +165,7 @@ recovery, HTTP responsiveness, preserved source, and successful retry.
 
 ## HTTP workflows
 
-The landing page still has no interactive controls; Step 7 will connect the
-browser to these implemented routes. JSON field names are shown below.
+The browser controls use these routes. JSON field names are shown below.
 
 | Method | Route | Input / behavior |
 | --- | --- | --- |
@@ -147,8 +180,8 @@ browser to these implemented routes. JSON field names are shown below.
 
 Source routes return a state snapshot. Action responses contain `state` and
 `result`, including operation, source revision, outcome, output, free variables,
-and a null artifact. JSON transports output literally and preserves line breaks;
-browser rendering remains to be implemented.
+and a null artifact. The browser uses textarea values and text nodes, preserving
+literal source/output and line breaks without interpreting HTML-like text.
 
 Invalid source returns HTTP 400, model conflicts 409, and invalid request fields
 422, with `detail` and unchanged applied `state`. Unknown canned names return
@@ -190,14 +223,15 @@ Source names are labels; the model never reads or modifies the original file.
 
 ## Current limitations and remaining work
 
-The landing page, reader, model, bounded backend, and HTTP controller are
-implemented and tested. The supplied `lambda1.py` is unchanged. Real loopback
-requests verified server responsiveness during interpretation and timeout/retry.
-Browser controls and visual recovery checks remain for Step 7.
+The browser interface, reader, model, bounded backend, and HTTP controller are
+implemented. The supplied `lambda1.py` is unchanged. Browser verification results
+are recorded in `TESTING.md`. This is a local single-user application; state is
+not persisted after server restart and multiple tabs are not synchronized.
 
 Type-check/Compile remain placeholders. No generated artifacts are created or
 accepted by this model version; Execute stays unavailable. Artifact support is
 reserved for future development, not implemented as an assignment extension.
 
-Required browser demonstrations, final limitations, and the 200-300 word MVC
-reflection will be completed after the features are tested.
+The required demonstration narrative, final documentation review, and 200–300
+word MVC reflection remain for Step 8; clean-checkout verification remains for
+Step 9.

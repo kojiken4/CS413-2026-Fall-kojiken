@@ -4,12 +4,61 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>LAMBDA Web Front-End</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/app.js" defer></script>
 </head>
 <body>
   <main>
     <h1>LAMBDA Web Front-End</h1>
     <p>Load, check, and interpret LAMBDA programs.</p>
-    <p>The source editor and language actions are not available yet.</p>
+    <noscript>This application requires JavaScript for editing and language actions.</noscript>
+    <section aria-labelledby="source-heading">
+      <h2 id="source-heading">Source</h2>
+      <div class="controls">
+        <label for="source-menu">Load source</label>
+        <select id="source-menu" disabled>
+          <option value="file">Choose File</option>
+          <option value="manual">Manual input</option>
+          <option value="factorial">Factorial (canned)</option>
+          <option value="fibonacci">Fibonacci (canned)</option>
+        </select>
+        <button id="load-source" type="button" disabled>Load source</button>
+        <input id="source-file" type="file" aria-label="Choose UTF-8 source file" hidden>
+      </div>
+      <p id="source-info">No applied source · Revision 0</p>
+      <label for="source-editor">Constructor expression</label>
+      <textarea id="source-editor" rows="14" spellcheck="false" readonly
+        aria-describedby="source-help edit-status"
+        placeholder='D0Eop2("+", D0Eint(20), D0Eint(22))'></textarea>
+      <p id="source-help">Enter one constructor expression. Comments and multiline input are accepted.
+        Source must be nonempty UTF-8 text, at most 65,536 bytes (64 KiB).
+        Applied edits change this application's copy, not your original file.</p>
+      <p id="edit-status">Waiting for application state.</p>
+      <div class="controls">
+        <button id="apply-changes" type="button" disabled>Apply changes</button>
+        <button id="discard-changes" type="button" disabled>Discard changes</button>
+      </div>
+    </section>
+    <section aria-labelledby="actions-heading">
+      <h2 id="actions-heading">Actions</h2>
+      <div id="actions" class="controls">
+        <button type="button" data-operation="lint" disabled>Lint</button>
+        <button type="button" data-operation="interpret" disabled>Interpret</button>
+        <button type="button" data-operation="typecheck" disabled>Type-check</button>
+        <button type="button" data-operation="compile" disabled>Compile</button>
+        <button type="button" data-operation="execute" aria-describedby="execute-help" disabled>Execute</button>
+      </div>
+      <p>Type-check and Compile are not yet implemented. Lint and Interpret run independently.</p>
+      <p id="execute-help">Execute runs generated code. It is unavailable until compilation
+        is implemented and produces an artifact.</p>
+      <p>Language work has a five-second worker timeout.</p>
+    </section>
+    <p id="status" role="status" aria-live="polite">Connecting to the application…</p>
+    <p id="notice" role="alert"></p>
+    <section id="results-section" aria-labelledby="results-heading" aria-busy="false">
+      <h2 id="results-heading">Results</h2>
+      <div id="results"><p>No results for this revision.</p></div>
+    </section>
   </main>
 </body>
 </html>

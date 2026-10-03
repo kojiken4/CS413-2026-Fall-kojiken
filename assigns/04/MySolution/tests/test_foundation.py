@@ -13,7 +13,8 @@ def test_landing_page():
     assert response.headers["content-type"].startswith("text/html")
     assert '<html lang="en">' in response.text
     assert "LAMBDA Web Front-End" in response.text
-    assert "not available yet" in response.text
+    assert 'id="source-editor"' in response.text
+    assert 'src="/static/app.js"' in response.text
 
 
 def test_unknown_route_is_not_a_tool_action():

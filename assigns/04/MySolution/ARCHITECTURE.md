@@ -1,6 +1,6 @@
 # Architecture
 
-## Current components (Step 6)
+## Current components (Step 7)
 
 ```mermaid
 flowchart LR
@@ -14,6 +14,9 @@ flowchart LR
     Controller -->|injected LanguageBackend| Bounded
     Controller --> View[view.py: render_landing_page]
     View --> HTML[templates/index.html]
+    Browser --> BrowserView[static/app.js and style.css]
+    App -->|serves assets| BrowserView
+    BrowserView -->|HTTP requests and state/results| Controller
     Backend[backend.py: LambdaBackend] --> Contracts[contracts.py]
     Backend --> Reader[constructor_reader.py]
     Backend --> Language[lambda1.py]
@@ -34,13 +37,14 @@ flowchart LR
 
 This is the implemented dependency graph for the default composition. The app
 injects an independent model and bounded backend into its controller. Source and
-action routes return state/result JSON; the landing view stays static until Step 7.
+action routes return state/result JSON. Browser JavaScript forwards interactions
+and renders these snapshots; it never parses, lints, or interprets source.
 
 | Responsibility | Implementation | Current status |
 | --- | --- | --- |
 | Composition | `lambda_web/app.py`, `create_app` | Injects model/backend, registers routes/errors, waits for work at shutdown |
 | Controller | `lambda_web/controller.py`, `ApplicationController` | Handles sources/actions, coordinates model/backend, returns snapshots/results |
-| View | `lambda_web/view.py`, `templates/index.html` | Static markup without language analysis |
+| View | `lambda_web/view.py`, `templates/index.html`, `static/app.js`, `static/style.css` | Labeled controls, editable draft, status, and literal results without language analysis |
 | Model | `lambda_web/model.py`, `ApplicationModel` | Source/revision, editing, busy, and result rules |
 | Backend adapter | `lambda_web/backend.py`, `LambdaBackend` | Real Lint/Interpret and explicit unavailable operations |
 | Bounded adapter | `lambda_web/bounded_backend.py`, `BoundedBackend` | Five-second workers, cleanup, and failure results |
@@ -125,8 +129,7 @@ Generated artifacts are reserved but rejected in this version; Execute is blocke
 
 ## Load -> Lint -> Interpret trace
 
-The following HTTP/model/backend trace is implemented. Browser controls and
-literal result rendering will connect to these responses in Step 7.
+The following browser/HTTP/model/backend trace is implemented.
 
 1. Upload/canned routes load decoded text, or draft/Apply routes accept an edit.
    The model creates a revision and clears old results/artifacts. Rejection
@@ -146,7 +149,23 @@ literal result rendering will connect to these responses in Step 7.
    releases busy state and permits retry; applied source remains intact.
 6. Action responses return state and result with action/revision/outcome/text.
    `GET /api/state` reports busy status, results, and enabled actions. The future
-   browser view will display these literal values; Execute remains unavailable.
+   browser view displays these values as literal text; Execute remains unavailable.
+
+## Browser state synchronization
+
+The view keeps local editor text and serializes draft updates, coalescing newer
+typing while a request is pending. A response to older typing never replaces the
+current editor value. Apply waits for the latest draft update before submitting.
+Local dirty/unsynchronized text disables tools and source replacement immediately;
+the server model independently enforces its authoritative state rules.
+
+Source/action requests lock editing controls and report textual status. Results
+are created with DOM text nodes and `pre` elements; source uses the textarea value.
+No source or output is inserted as HTML. On request errors, the view preserves
+editor text and refreshes server state when possible. If a lost action response
+leaves the model busy, state polling follows it until completion. Reloading during
+work similarly resumes busy-state observation. Browser storage and multi-tab
+synchronization are outside the local single-user scope.
 
 ## Design decisions
 

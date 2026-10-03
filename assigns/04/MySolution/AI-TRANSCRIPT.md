@@ -119,3 +119,28 @@ commit selection remain separate from automated checks. No commit was made.
   server verified source/action workflows, responsive busy-state requests, the
   five-second timeout, source preservation, and successful retry; it was stopped
   afterward. Browser checks remain for Step 7. Nothing was staged or committed.
+
+## Step 7 review and validation
+
+- User authorized Step 7 after reviewing the controller/model/backend relationship.
+  Codex explained the interface scope before editing and kept language operations,
+  model rules, and generated-code behavior unchanged.
+- Added plain HTML/CSS/JavaScript controls for source selection, draft editing,
+  Apply/Discard, ordered actions, textual status, and literal revision-associated
+  results. FastAPI serves fixed static assets; the view performs no language analysis.
+- Draft requests are serialized and newer typing is preserved over older responses.
+  Apply waits for synchronization. Dirty/busy controls reflect state without
+  replacing the server model's guards. Network failures retain local text.
+- MDN guidance was checked for Fetch response handling and DOM text rendering:
+  https://developer.mozilla.org/en-US/docs/Web/API/Response/ok and
+  https://developer.mozilla.org/en-US/docs/Web/API/Node/textContent.
+  Playwright's official Python browser documentation informed installed-Edge testing:
+  https://playwright.dev/python/docs/browsers.
+- Added pinned test-only Playwright and seven opt-in browser smoke tests using
+  real local servers/tools. Injection is limited to network/delay and multiline
+  rendering checks. Initial failures were corrected test expectations/timing,
+  not substitutes for required language implementations.
+- Default suite: 364 passed, 7 browser tests skipped. Separate browser suite:
+  all 7 passed on Edge 154.0.4258.53. Desktop/narrow-screen rendering was visually
+  inspected; dependency and JavaScript syntax checks passed. The supplied
+  interpreter remains unchanged. Nothing was staged or committed.

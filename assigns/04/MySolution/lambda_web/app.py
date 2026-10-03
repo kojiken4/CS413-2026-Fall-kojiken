@@ -1,9 +1,11 @@
 """Compose independent MVC state and a replaceable bounded language backend."""
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
+from fastapi.staticfiles import StaticFiles
 
 from .bounded_backend import BoundedBackend
 from .contracts import LanguageBackend
@@ -32,6 +34,7 @@ def create_app(
     app = FastAPI(title="LAMBDA Web Front-End", lifespan=lifespan)
     app.state.controller = controller
     app.include_router(controller.router)
+    app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 
     @app.exception_handler(ModelStateError)
     async def state_error(request, error):
