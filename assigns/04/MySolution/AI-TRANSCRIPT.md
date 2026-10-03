@@ -10,7 +10,7 @@ important prompts and suggestions; it is not a verbatim conversation export.
 - User: review `Assign04.md` and explain its requirements.
 - User: develop incremental, separately committable steps, explain each step
   before implementation, and stay within the assignment specification.
-- User selected FastAPI for the web framework.
+- Implementation uses FastAPI with plain browser HTML/CSS/JavaScript.
 - User: implement one step, do not commit, and wait for permission to continue.
 - Codex proposed controller-coordinated MVC, a restricted constructor reader,
   the supplied interpreter unchanged, and bounded backend execution.
@@ -144,3 +144,22 @@ commit selection remain separate from automated checks. No commit was made.
   all 7 passed on Edge 154.0.4258.53. Desktop/narrow-screen rendering was visually
   inspected; dependency and JavaScript syntax checks passed. The supplied
   interpreter remains unchanged. Nothing was staged or committed.
+
+## Step 8 documentation review
+
+- User authorized final documentation (Step 8). Codex explained the scope and
+  limited edits to README, ARCHITECTURE, TESTING, and this assistance record.
+- README was condensed and completed with reproducible commands, verified
+  dependency versions, the four required demonstrations, limitations, and a
+  249-word MVC reflection. The reflection describes actual boundaries and
+  synchronization difficulties; it does not claim future compiler support exists.
+- Architecture was checked against implementation and shortened to approximately
+  904 words excluding its diagram. Future compilation explicitly requires changing
+  current artifact rejection and wiring Execute, not only replacing backend methods.
+- Historical testing entries were distinguished from current evidence. Local
+  links, fenced blocks, and reflection length were checked. Demonstration outcomes
+  were verified against real bounded tools through controller requests. One
+  temporary diagnostic assertion was corrected to match the supplied evaluator's
+  actual ZeroDivisionError wording; no code changes were necessary.
+- Clean-checkout verification remains for Step 9. No implementation extension,
+  test changes, staging, or commits were performed.

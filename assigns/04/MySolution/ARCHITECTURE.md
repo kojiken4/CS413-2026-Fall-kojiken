@@ -1,31 +1,29 @@
 # Architecture
 
-## Current components (Step 7)
+## Components and responsibilities
+
+Arrows show imports, injected collaborators, and labeled runtime interactions.
+The app creates independent model/controller instances and injects a
+`LanguageBackend`; the diagram shows the default bounded implementation.
 
 ```mermaid
 flowchart LR
     Browser --> App[app.py: create_app]
     App --> Controller[controller.py: ApplicationController]
-    App --> Model
-    App --> Bounded
+    App --> Model[model.py: ApplicationModel]
+    App --> Bounded[bounded_backend.py: BoundedBackend]
     Controller --> Model
-    Controller --> Contracts
-    Controller --> Validation
-    Controller -->|injected LanguageBackend| Bounded
+    Controller --> Contracts[contracts.py]
+    Controller --> Validation[source_validation.py]
+    Controller -->|injected backend calls| Bounded
     Controller --> View[view.py: render_landing_page]
     View --> HTML[templates/index.html]
     Browser --> BrowserView[static/app.js and style.css]
     App -->|serves assets| BrowserView
     BrowserView -->|HTTP requests and state/results| Controller
-    Backend[backend.py: LambdaBackend] --> Contracts[contracts.py]
-    Backend --> Reader[constructor_reader.py]
-    Backend --> Language[lambda1.py]
-    Reader --> AST[Python ast parser]
-    Reader --> Language
-    Reader --> Validation[source_validation.py]
-    Model[model.py: ApplicationModel] --> Contracts
+    Model --> Contracts
     Model --> Validation
-    Bounded[bounded_backend.py: BoundedBackend] --> Backend
+    Bounded --> Backend[backend.py: LambdaBackend]
     Bounded --> Validation
     Bounded --> Transport[worker_protocol.py]
     Bounded --> Subprocess[Python subprocess.run]
@@ -33,159 +31,121 @@ flowchart LR
     Worker --> Backend
     Worker --> Transport
     Transport --> Contracts
+    Backend --> Contracts
+    Backend --> Reader[constructor_reader.py]
+    Backend --> Language[lambda1.py]
+    Reader --> AST[Python ast parser]
+    Reader --> Language
+    Reader --> Validation
 ```
 
-This is the implemented dependency graph for the default composition. The app
-injects an independent model and bounded backend into its controller. Source and
-action routes return state/result JSON. Browser JavaScript forwards interactions
-and renders these snapshots; it never parses, lints, or interprets source.
-
-| Responsibility | Implementation | Current status |
+| Responsibility | Implementation | Owns |
 | --- | --- | --- |
-| Composition | `lambda_web/app.py`, `create_app` | Injects model/backend, registers routes/errors, waits for work at shutdown |
-| Controller | `lambda_web/controller.py`, `ApplicationController` | Handles sources/actions, coordinates model/backend, returns snapshots/results |
-| View | `lambda_web/view.py`, `templates/index.html`, `static/app.js`, `static/style.css` | Labeled controls, editable draft, status, and literal results without language analysis |
-| Model | `lambda_web/model.py`, `ApplicationModel` | Source/revision, editing, busy, and result rules |
-| Backend adapter | `lambda_web/backend.py`, `LambdaBackend` | Real Lint/Interpret and explicit unavailable operations |
-| Bounded adapter | `lambda_web/bounded_backend.py`, `BoundedBackend` | Five-second workers, cleanup, and failure results |
-| Worker/transport | `lambda_web/worker.py`, `worker_protocol.py` | Restricted language processing and validated JSON results |
-| Shared contracts | `lambda_web/contracts.py` | Protocol, operations, outcomes, results, future artifact |
-| Constructor reader | `lambda_web/constructor_reader.py` | Validated AST traversal and 64 KiB text bound |
-| Shared source validation | `lambda_web/source_validation.py` | Encoding, nonempty text, and 64 KiB bound without parsing |
-| Language tools | `lambda_web/lambda1.py` | Supplied implementation, unchanged |
+| Composition | `app.py: create_app` | Injection, routes, static files, error handlers, shutdown |
+| Model | `model.py: ApplicationModel/ApplicationState` | Source/draft, revision, results/artifact, state rules |
+| Controller | `controller.py: ApplicationController` | Source requests, tool dispatch, completion, JSON snapshots |
+| View | `view.py`, `templates/index.html`, `static/app.js`, `static/style.css` | Controls, editing, status, literal results |
+| Language adapter | `backend.py: LambdaBackend` | Supplied free-variable analysis/evaluation and diagnostics |
+| Bounded adapter | `bounded_backend.py: BoundedBackend` | Worker timeout and failure handling |
+| Worker/transport | `worker.py`, `worker_protocol.py` | Trusted processing and validated JSON |
+| Shared contracts | `contracts.py` | Protocol, operations, outcomes, results, future artifact |
+| Input validation | `constructor_reader.py`, `source_validation.py` | Restricted constructor AST; nonempty UTF-8/64 KiB checks |
+| Language | `lambda1.py` | Supplied implementation, unchanged |
+
+All Python module paths above are relative to `lambda_web/`. The model imports
+neither HTTP nor language tools. The view forwards interactions and renders state
+without parsing, linting, or interpreting source.
 
 ## Backend contract
 
-`LanguageBackend` is a structural Python protocol. A replacement implements:
-
-- `lint(source, source_revision) -> OperationResult`
-- `interpret(source, source_revision) -> OperationResult`
-- `typecheck(source, source_revision) -> OperationResult`
-- `compile(source, source_revision) -> OperationResult`
-- `execute(artifact_or_none, source_revision) -> OperationResult`
-
-`OperationResult` is immutable and contains `operation`, `source_revision`,
-`outcome`, and textual `output`. Optional `free_variables` is a Python
-`frozenset[str]` for a completed Lint analysis; optional `artifact` is always
-`None` in the current implementation. Model state guards validate that
-source is applied and requests are allowed; the adapter owns language processing.
+The synchronous structural protocol defines `lint`, `interpret`, `typecheck`,
+and `compile` with `(source: str, source_revision: int)`, plus
+`execute(artifact: GeneratedArtifact | None, source_revision: int)`.
+Each returns immutable `OperationResult`: operation, source revision, outcome,
+text output, optional `frozenset[str]` free variables, and optional artifact.
+Artifacts are always absent in this implementation.
 
 | Outcome | Meaning |
 | --- | --- |
-| `success` | No free variables or a successful interpreter value |
-| `invalid_input` | Source encoding/size/emptiness, constructor syntax, or argument errors |
-| `language_error` | Lint found undeclared variables |
-| `runtime_error` | Evaluation arithmetic/type/value/recursion error or exact `D0V000()` in a value/pair |
-| `backend_failure` | Unexpected reader/tool failure or invalid tool return |
-| `not_implemented` | Type-check or Compile placeholder; no claimed analysis/artifact |
-| `unavailable` | Execute cannot execute generated code in this implementation |
+| `success` | Closed Lint analysis or successful evaluation |
+| `invalid_input` | Constructor syntax/arguments or source transport error |
+| `language_error` | Undeclared variables |
+| `runtime_error` | Evaluation failure or exact error sentinel |
+| `backend_failure` | Timeout, worker/transport failure, unexpected exception/invalid result |
+| `not_implemented` | Type-check/Compile placeholder |
+| `unavailable` | Backend Execute has no implemented generated-code executor |
 
-Lint calls `d0exp_fvset`, checks its `frozenset` result, and lists names in sorted
-order. It never evaluates source. Interpret calls `d0exp_evaluate` with `ENVnil()`
-without requiring Lint. Returned values are formatted as text. Sentinel detection
-uses exact type equality because all successful values inherit from `D0V000`.
-The language implementation has no HTTP/view/model dependencies. The bounded
-adapter runs it inside a disposable worker; direct `LambdaBackend` calls are
-reserved for worker execution and language tests.
+Lint calls `d0exp_fvset`, returns its `frozenset`, and sorts undeclared names;
+it never evaluates source. Interpret independently calls `d0exp_evaluate` with
+`ENVnil()`. Exact `D0V000()` values directly or inside pairs are runtime errors.
+Exact type comparison matters because successful values inherit from `D0V000`.
 
-## Bounded execution
+HTTP actions return state/result JSON, including operation/revision/outcome.
+Source rejection is HTTP 400, model conflict 409, and malformed request 422;
+language outcomes use HTTP 200. Execute is disabled and rejected by the model
+before backend dispatch. Neither placeholder parses source or creates artifacts.
 
-`BoundedBackend` preserves the synchronous backend interface. It checks source
-transport limits, launches a fixed Python module without a shell, and sends source
-as UTF-8 JSON on stdin. The worker runs the existing reader/Lint/Interpret code.
-JSON responses are checked for operation/revision, outcome, output, free variables,
-and absence of artifacts. No uploaded Python is executed.
+## State, synchronization, and bounded work
 
-`subprocess.run(timeout=5)` bounds startup/imports, parsing, evaluation, and result
-transport after OS process creation; process creation overhead and cleanup can
-extend total elapsed time. Python kills and waits for timed-out children and closes
-pipe handles. Timeouts and worker/transport failures return `backend_failure`;
-normal language diagnostics retain their original outcomes. Placeholder methods
-run in-process without workers. The controller uses `asyncio.to_thread` and shields
-its owned task from HTTP-wait cancellation. Cleanup belongs to the worker thread:
-busy state persists until completion, even if the requesting client disconnects.
-Shutdown waits for owned tasks. The event loop remains available for state requests;
-model guards reject conflicting edits/actions. These HTTP behaviors are tested.
+Accepted loads/applied edits increment revision and clear results/artifacts.
+Discard restores applied text/name without changing revision/results. Rejection
+preserves applied state and keeps rejected text correctable; undecodable or
+oversized uploads keep the existing draft. Dirty state blocks tools/replacement;
+busy state also blocks editing, Apply, and Discard.
 
-## Model state and transitions
+Short locked model transitions atomically start work. Completion must match the
+original `OperationRequest`, operation, and revision. Cleanup cannot clear newer
+work. The controller validates/stores results and converts unexpected failures
+to `backend_failure`, preserving source and enabling retry.
 
-`ApplicationState` is an immutable snapshot: applied source/name, draft/name,
-revision, result tuple, optional artifact (always absent here), and active operation.
-Dirty means draft text differs from applied text; busy means an operation is active.
+The browser serializes draft requests and preserves newer typing over older
+responses. Apply waits for synchronization. Local control guards reflect state;
+the model independently enforces its rules. Textarea values and DOM text nodes
+render source/results literally, with `pre` preserving output line breaks.
 
-Accepted uploads/canned loads and applied edits create a revision and clear
-results/artifacts. Manual input opens a blank draft; Apply accepts it and Discard
-restores applied text/name. Rejected changes preserve source/revision/results;
-invalid text remains editable. Transport validation is shared without importing
-language tools into the model. Syntax is checked only by the backend reader.
+The controller waits using `asyncio.to_thread`, shielding owned work from HTTP
+cancellation and awaiting it at shutdown. The bounded adapter launches a fixed
+trusted worker without a shell and sends source as JSON, never executable Python.
+Its five-second timeout covers startup through response after OS process creation;
+creation/cleanup can add overhead. Timed-out workers are killed and waited for.
+The event loop stays responsive. Lost responses trigger state refresh and, when
+busy, polling until completion. No persistence or multi-tab synchronization exists.
 
-Short locked transitions reject dirty/busy conflicts and atomically start work.
-`begin_operation` returns an `OperationRequest`; `finish_operation(request, result)`
-requires the same active request, operation, and revision. Invalid completions leave
-state unchanged. `abort_operation(request)` is idempotent and cannot clear newer
-work, so the controller can use it for cleanup. Failed backend results preserve
-source and allow retry. The model never calls a backend or accesses a local file.
-Generated artifacts are reserved but rejected in this version; Execute is blocked.
+## Load → Lint → Interpret trace
 
-## Load -> Lint -> Interpret trace
+1. Browser upload/canned or draft/Apply requests reach the controller. Uploads
+   are decoded as UTF-8; replacement permission is checked again after reading.
+   The model accepts source, creates revision N, and clears previous results.
+2. Lint starts an owned model request. The controller passes applied source/N to
+   the backend in a thread. The worker reader constructs the expression;
+   `d0exp_fvset` computes free variables.
+3. Closed source yields success. `D0Evar("x")` yields `language_error` listing
+   `x`. The controller records the matching result, releases busy state, and
+   returns it for the view to display.
+4. Interpret starts independently, parsing the applied source again and using an
+   empty environment. `D0Evar("x")` yields an error sentinel and
+   `runtime_error`; closed division by zero also fails despite passing Lint.
+5. The model records the result for N, preserves source, and allows another action.
+   The view shows action, revision, outcome, and literal output.
 
-The following browser/HTTP/model/backend trace is implemented.
+## Two design decisions
 
-1. Upload/canned routes load decoded text, or draft/Apply routes accept an edit.
-   The model creates a revision and clears old results/artifacts. Rejection
-   preserves applied state; empty/rejected edits remain correctable. Invalid
-   UTF-8/oversized uploads keep the existing draft. Upload replacement is checked
-   before reading and again when accepting source to prevent races with edits.
-2. On `POST /api/actions/lint`, the model atomically checks prerequisites and
-   starts work. The controller passes applied text/revision to the adapter in a
-   thread. Reader builds the expression; `d0exp_fvset` finds free variables.
-3. A closed expression returns success. `D0Evar("x")` returns `language_error`
-   listing `x`; controller stores the revision-associated result for the view.
-4. Interpret is independent. Reader builds the applied expression again and the
-   evaluator uses an empty environment. `D0Evar("x")` yields `D0V000()` and a
-   `runtime_error`. Closed division by zero also fails despite passing Lint.
-5. Controller validates the backend result and stores it through the model using
-   the original request. Unexpected failures become `backend_failure`. Completion
-   releases busy state and permits retry; applied source remains intact.
-6. Action responses return state and result with action/revision/outcome/text.
-   `GET /api/state` reports busy status, results, and enabled actions. The future
-   browser view displays these values as literal text; Execute remains unavailable.
-
-## Browser state synchronization
-
-The view keeps local editor text and serializes draft updates, coalescing newer
-typing while a request is pending. A response to older typing never replaces the
-current editor value. Apply waits for the latest draft update before submitting.
-Local dirty/unsynchronized text disables tools and source replacement immediately;
-the server model independently enforces its authoritative state rules.
-
-Source/action requests lock editing controls and report textual status. Results
-are created with DOM text nodes and `pre` elements; source uses the textarea value.
-No source or output is inserted as HTML. On request errors, the view preserves
-editor text and refreshes server state when possible. If a lost action response
-leaves the model busy, state polling follows it until completion. Reloading during
-work similarly resumes busy-state observation. Browser storage and multi-tab
-synchronization are outside the local single-user scope.
-
-## Design decisions
-
-1. FastAPI with plain HTML/CSS/JavaScript gives explicit HTTP boundaries and easy
-   controller testing, at the cost of keeping browser/server state synchronized.
-2. Controller-coordinated tools keep the model independent of language execution,
-   at the cost of orchestration and cleanup in the controller. Shared contracts
-   live separately so the future model need not import the concrete interpreter.
+1. FastAPI with plain HTML/CSS/JavaScript makes HTTP boundaries and controller
+   testing explicit. The tradeoff is manually synchronizing drafts and controls.
+2. Controller-coordinated tools keep state rules independent of language
+   execution. The tradeoff is controller responsibility for orchestration,
+   result validation, and asynchronous cleanup.
 
 ## Future tools and generated artifacts
 
-Real type-checking and compilation could replace the adapter methods without
-changing view code or state ownership. `GeneratedArtifact` defines immutable
-`source_revision`, textual `code`, and `code_format` identifying the execution
-format. A real compiler would return it with a successful compilation result.
-The model would associate it with the current source, invalidate it on source
-changes or failed recompilation, and enable Execute only when usable code exists.
-Execute would consume the stored artifact without silently recompiling. A future
-executor must validate revision/format and use bounded execution.
+A real type checker can replace its adapter method while retaining result
+metadata and view code. A compiler also needs changes to the current model and
+controller validation, which reject artifacts. `GeneratedArtifact` defines
+`source_revision`, textual `code`, and `code_format`. Successful compilation
+would store this artifact; source changes or failed recompilation would invalidate
+it. Execute would consume the stored artifact without silently recompiling,
+checking revision/format and using bounded execution.
 
-Current Compile creates no artifact. Current Execute always returns unavailable,
-even if passed a hypothetical artifact, because generated-code execution is out
-of scope. No compiler, mock compiler fixture system, or executor is implemented.
+This is a future design, not implemented functionality. Compile currently
+returns `not_implemented`; no compiler, compiler fixture system, or generated-code
+executor was added.

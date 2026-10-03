@@ -1,43 +1,40 @@
 # LAMBDA Web Front-End
 
-Assignment 04 implementation, currently at Step 7 (browser interface).
-Requires Python 3.12 or later; setup and tests were verified with Python 3.13.14 on Windows.
-Direct runtime dependencies are pinned in `requirements.txt`; test dependencies
-are in `requirements-dev.txt`.
+Assignment 04: a local, single-user MVC application using the supplied,
+unchanged LAMBDA interpreter. Python **3.12 or later** is required; implementation
+and tests were verified with **Python 3.13.14 on Windows**.
 
-## Setup
+Runtime dependencies: FastAPI 0.142.2, Uvicorn 0.54.0, python-multipart 0.0.32.
+Test dependencies: pytest 9.1.1, HTTPX 0.28.1, Playwright 1.55.0.
+Pinned declarations are in [requirements.txt](requirements.txt) and
+[requirements-dev.txt](requirements-dev.txt).
 
-Run these PowerShell commands from the repository root:
+## Setup and start
+
+Run from the repository root in PowerShell:
 
 ```powershell
 Set-Location assigns/04/MySolution
 py -3.13 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
-```
-
-Activation is unnecessary. The environment and caches are ignored by Git.
-
-## Start
-
-From `MySolution`:
-
-```powershell
 .\.venv\Scripts\python.exe -m uvicorn lambda_web.app:create_app --factory --host 127.0.0.1 --port 8000 --workers 1
 ```
 
-Open [the local application](http://127.0.0.1:8000/). Stop the server with Ctrl+C.
-The server must remain on the loopback interface with one worker.
+Open [the application](http://127.0.0.1:8000/). Stop with Ctrl+C.
+Keep the server on loopback with **one worker**. Activation is unnecessary.
+Virtual environments and caches are ignored by Git. For running the application
+without test tools, install `requirements.txt` instead.
 
-## Test
+## Tests
 
 From `MySolution`:
 
 ```powershell
 .\.venv\Scripts\python.exe -m pytest -q
+.\.venv\Scripts\python.exe -m pip check
 ```
 
-The default suite skips opt-in browser smoke tests. To run them with Playwright's
-Chromium browser, from the same directory:
+The default suite skips the seven opt-in browser tests. To run them:
 
 ```powershell
 .\.venv\Scripts\python.exe -m playwright install chromium
@@ -46,35 +43,60 @@ $env:LAMBDA_BROWSER_TESTS = "1"
 Remove-Item Env:LAMBDA_BROWSER_TESTS
 ```
 
-Alternatively, use installed Edge by setting
-`$env:LAMBDA_BROWSER_CHANNEL = "msedge"` before the browser test command,
-without downloading Chromium. Remove that variable afterward as well.
-Each browser test starts and stops an independent loopback server.
+Alternatively, skip the Chromium download and set
+`$env:LAMBDA_BROWSER_CHANNEL = "msedge"` before running browser
+tests to use installed Edge. Remove that variable afterward with
+`Remove-Item Env:LAMBDA_BROWSER_CHANNEL`. Each browser test starts
+and stops its own loopback server.
+
+Observed in the development environment: **364 default tests passed** and
+**all seven browser tests passed** separately. Details, browser observations,
+and F1–F10 mappings are in [TESTING.md](TESTING.md). Clean-checkout verification
+remains for Step 9; these results do not claim it has been completed.
 
 ## Using the interface
 
 Choose an item in **Load source**, then press **Load source**. Choose File opens
-the local file chooser, Manual input opens a blank draft, and the two canned
-examples load editable expressions. Initial typing also works without selecting
-Manual input. Source name and applied revision appear above the editor.
+a local UTF-8 file chooser, Manual input opens a blank editor, and the canned
+examples load editable expressions. Initial typing also works without an upload.
+The page displays the applied source name and revision.
 
-Typing updates the draft without applying it. Press **Apply changes** to create
-a revision and clear previous results, or **Discard changes** to restore applied
-text. While edits are unapplied, tool actions and source replacement are disabled.
-Rejected edits remain in the editor for correction. Results show action, source
-revision, outcome, and literal text; line breaks are preserved.
+Typing updates a draft. **Apply changes** accepts it as a new revision and clears
+results; **Discard changes** restores applied text without changing the revision.
+Unapplied edits block tools and source replacement. Applied edits affect the
+application's copy, never the original local file. Busy status locks conflicting
+controls until work completes or fails.
 
-Run **Lint** or **Interpret** independently after applying or loading source.
-During requests, controls communicate busy status and prevent conflicting work;
-completion or failure restores availability. A network error preserves editor
-text; when the connection returns, retry Apply to synchronize pending edits.
-If the initial connection fails, restore the server and reload the page.
+Results show their action, source revision, outcome, and literal text with line
+breaks preserved. Lint and Interpret can be invoked independently.
 
-## Constructor-input format
+## Demonstration
 
-`lambda_web.constructor_reader.read_constructor(source)` accepts one constructor
-expression and returns a supplied `lambda1.d0exp`. Input is data, not a script.
-No imports are needed in constructor input. Examples:
+1. Select **Factorial (canned)**, press **Load source**, then **Lint** and
+   **Interpret**. Expect `success` and `D0Vint(arg1=120)` for factorial(5).
+   Select **Fibonacci (canned)** and repeat; expect `D0Vint(arg1=8)` for
+   Fibonacci(6). Accepted loads increment the revision and clear prior results.
+2. Select **Manual input**, load it, enter `D0Evar("x")`, and **Apply changes**.
+   **Lint** reports `language_error` with `Undeclared variables: 'x'`.
+   Replace the text with `D0Eint(42)`, apply it, and lint again.
+   Expect `success` with “No free variables were found.”
+3. Replace the editor text with `D0Eop2("/", D0Eint(1), D0Eint(0))`
+   and apply it. **Lint** succeeds because the expression is closed.
+   **Interpret** reports `runtime_error` with a division-by-zero diagnostic.
+   Passing Lint therefore does not guarantee successful evaluation.
+4. With clean applied source, press **Type-check** and **Compile**. Both return
+   `not_implemented`, with “Type checking is not yet implemented.” and
+   “Compilation is not yet implemented.” **Execute** remains disabled: it is
+   reserved for generated code, and Compile produces no artifact.
+
+Sample files in [samples/](samples/) contain factorial, Fibonacci, an open
+variable, division by zero, and invalid constructor input. These demonstrations
+were exercised in the Step 7 browser tests.
+
+## Constructor input
+
+Input is **one Python constructor expression**, not a Python script. Constructor
+names need no imports; comments and multiline nesting are supported:
 
 ```python
 D0Eop2("+", D0Eint(20), D0Eint(22))
@@ -82,156 +104,70 @@ D0Eint(arg1=-42)
 D0Epair(arg2=D0Ebtf(False), arg1=D0Eint(+1))
 ```
 
-Supported constructors: `D0Eint`, `D0Ebtf`, `D0Evar`, `D0Eop1`, `D0Eop2`,
-`D0Elam`, `D0Efix`, `D0Eapp`, `D0Eif0`, `D0Elet`, `D0Epair`, `D0Epfst`,
-and `D0Epsnd`. Arguments follow the supplied dataclass signatures. Positional,
-named, and mixed arguments are accepted; names must match the fields exactly.
-Missing, extra, unknown, or duplicate arguments are rejected.
+Supported constructors: `D0Eint`, `D0Ebtf`, `D0Evar`,
+`D0Eop1`, `D0Eop2`, `D0Elam`, `D0Efix`,
+`D0Eapp`, `D0Eif0`, `D0Elet`, `D0Epair`,
+`D0Epfst`, and `D0Epsnd`. Arguments follow the supplied dataclass
+fields; positional, named, and mixed arguments are accepted. Missing, extra,
+unknown, duplicate, or incorrectly typed fields are rejected. Booleans and
+integers are distinct; signed integer literals are accepted.
 
-Nested constructors, comments, multiline expressions, strings, booleans, and
-signed integer literals are accepted. Scalar field types are checked exactly:
-`True` is not an integer and `1` is not a boolean. Operator names are strings;
-the reader does not check whether evaluation supports an operator.
+The restricted AST reader allows only these calls and their expected literals.
+It rejects statements, imports, arbitrary calls, attributes, comprehensions,
+formatted strings, and argument expansion. It never executes uploaded Python.
+Malformed constructor syntax may be applied, then diagnosed by Lint/Interpret.
 
-Only allowlisted constructor calls and their expected literals are accepted.
-Statements, arbitrary Python calls, attributes, arithmetic outside constructors,
-comprehensions, formatted strings, and `*`/`**` expansion are rejected. The reader
-uses Python's AST parser and never executes source or evaluates LAMBDA.
-Invalid input raises `ConstructorInputError` with a diagnostic.
+## Bounds and limitations
 
-Source must be nonempty UTF-8 text of at most **65,536 bytes (64 KiB)**, including
-comments and whitespace. The reader reports parser nesting limits or Python
-recursion limits as input errors. Uploads are decoded strictly as UTF-8 by the
-controller; the reader accepts already-decoded text.
+- Source must be nonempty UTF-8 text of at most **65,536 bytes (64 KiB)**,
+  including whitespace/comments. Rejected edits stay correctable. Empty uploads
+  retain a correctable draft; undecodable or oversized uploads preserve the
+  existing draft and applied state. Multipart parsing may spool data before the
+  application checks the size; it is not an HTTP request-body limit.
+- Lint/Interpret use a fresh trusted worker with a **five-second timeout** covering
+  startup, parsing, processing, and response transport after OS process creation.
+  Process creation and cleanup may add overhead. Timed-out workers are killed
+  and waited for; source is preserved and controls permit retry.
+- Python parser nesting and evaluator recursion limits still apply. Runtime
+  errors and exact `D0V000()` sentinels, including inside pairs, are reported
+  as errors. Lint computes free variables without evaluating source.
+- Type-check/Compile are placeholders. No generated artifact or generated-code
+  executor is implemented. The intended future contract is in
+  [ARCHITECTURE.md](ARCHITECTURE.md).
+- State is in memory, resets on server restart, and is not synchronized between
+  tabs. There are no accounts, persistence, or public deployment. JavaScript is
+  required. On a draft network error, text stays in the editor; restore the
+  connection and retry Apply. If initial connection fails, restart the server
+  and reload the page.
+- Tests emit one recorded Starlette/HTTPX deprecation warning. Browser checks
+  used Edge on Windows; other browsers/platforms and manual screen-reader use
+  have not been verified.
 
-## Language-tool backend
+## MVC reflection
 
-`LambdaBackend` in `lambda_web/backend.py` provides `lint(source, revision)`,
-`interpret(source, revision)`, `typecheck(source, revision)`,
-`compile(source, revision)`, and `execute(artifact, revision)`.
-Each returns an `OperationResult` containing operation, source revision, outcome,
-and textual output. Lint additionally returns a `frozenset` of free variables.
+MVC helped make state ownership explicit. The model owns applied source, drafts,
+revisions, results, and busy state, so rules such as blocking tools during
+unapplied edits can be tested without HTTP or a browser. This also prevents the
+interface from being the only place that protects application state. The view
+renders text and forwards interactions, while the controller coordinates source
+changes and calls the language backend.
 
-Lint uses the supplied `d0exp_fvset` without evaluation. Open expressions produce
-a language error with sorted undeclared names. Interpret independently calls
-`d0exp_evaluate` with an empty environment. Successful output is the returned
-value as text; input errors, runtime errors, and unexpected backend failures have
-distinct outcomes. An exact `D0V000()` directly or inside a pair is a runtime error.
+The most difficult separation was handling asynchronous work without mixing
+transport concerns into the model. Language operations use a synchronous
+interface, but interpretation must not block browser requests. The controller
+therefore runs backend work in a thread, while the bounded adapter manages a
+separate worker process. Request ownership matters: cancelling an HTTP wait must
+not release busy state while evaluation is still running. Matching completion
+and cleanup to the original operation request keeps that rule inside the model.
 
-Type-check and Compile return `not_implemented`, without parsing source or
-producing artifacts. Execute returns `unavailable`; it does not compile or
-interpret source. Applied-source, dirty, and busy prerequisites are enforced by
-the model through HTTP routes. See `ARCHITECTURE.md` for the future artifact
-contract.
+Draft synchronization was another boundary challenge. The browser must preserve
+newer typing when an older response arrives, but it should not decide whether a
+program is valid LAMBDA. Serialized draft requests and literal rendering handle
+presentation concerns; transport validation belongs to shared validation code,
+and constructor validation belongs to the language adapter.
 
-### Sample inputs
-
-| File | Lint | Interpret |
-| --- | --- | --- |
-| `samples/factorial.txt` | Pass | `D0Vint(arg1=120)` for factorial(5) |
-| `samples/fibonacci.txt` | Pass | `D0Vint(arg1=8)` for Fibonacci(6) |
-| `samples/open-variable.txt` | Undeclared `x` | Runtime error sentinel |
-| `samples/division-by-zero.txt` | Pass | Division-by-zero runtime error |
-| `samples/invalid-input.txt` | Invalid input | Invalid input |
-
-## Execution bounds
-
-`BoundedBackend` in `lambda_web/bounded_backend.py` implements the same backend
-interface, launching a fresh trusted Python worker for each Lint or Interpret.
-Source is JSON data on standard input, not part of a shell command. UTF-8 JSON
-results are validated and free-variable lists are reconstructed as `frozenset`.
-Type-check/Compile/Execute responses stay unchanged and launch no worker.
-
-The default worker timeout is **five seconds**, covering worker startup, imports,
-constructor parsing, language processing, and result transport after OS process
-creation. OS process creation itself cannot always be interrupted, so total
-elapsed time can include that overhead and process cleanup. Timed-out workers
-are killed and waited for; their pipes are closed. Timeouts, crashes, invalid
-responses, and communication failures return `backend_failure`, distinct from
-constructor input errors and language runtime errors.
-
-The source limit remains **64 KiB UTF-8**. The supplied recursive evaluator can
-also reach Python's recursion limit, which is reported as a runtime error.
-The bounded adapter does not change interpreter semantics or implement generated
-code execution. `LambdaBackend` remains the in-process implementation used by
-the worker and direct language tests; it has no standalone execution timeout.
-
-The backend interface is synchronous. The controller runs actions using
-`asyncio.to_thread`, so waiting does not block the event loop. Model work starts
-with `begin_operation`; completion and cleanup use the same request. Cancelling
-an HTTP wait does not cancel its worker or release busy state prematurely.
-Application shutdown waits for controller-owned work. Tests cover timeout
-recovery, HTTP responsiveness, preserved source, and successful retry.
-
-## HTTP workflows
-
-The browser controls use these routes. JSON field names are shown below.
-
-| Method | Route | Input / behavior |
-| --- | --- | --- |
-| GET | `/api/state` | Current model snapshot |
-| POST | `/api/source/draft` | JSON `source` string; retain editable text |
-| POST | `/api/source/manual` | Open a blank manual draft |
-| POST | `/api/source/apply` | Validate and apply draft |
-| POST | `/api/source/discard` | Restore applied source |
-| POST | `/api/source/canned` | JSON `name`: `factorial` or `fibonacci` |
-| POST | `/api/source/upload` | Multipart `file`: local UTF-8 text |
-| POST | `/api/actions/{operation}` | `lint`, `interpret`, `typecheck`, `compile`, or unavailable `execute` |
-
-Source routes return a state snapshot. Action responses contain `state` and
-`result`, including operation, source revision, outcome, output, free variables,
-and a null artifact. The browser uses textarea values and text nodes, preserving
-literal source/output and line breaks without interpreting HTML-like text.
-
-Invalid source returns HTTP 400, model conflicts 409, and invalid request fields
-422, with `detail` and unchanged applied `state`. Unknown canned names return
-404. Language/tool outcomes return HTTP 200 with their distinct result outcome.
-Rejected text edits and empty uploads remain correctable drafts. Undecodable or
-oversized uploads preserve the existing draft as well as applied state, rather
-than substituting an incomplete file prefix. Uploads are read to at most 65,537
-bytes for the application size check and closed after handling; multipart parsing
-may spool uploaded data before this check. Original local files are never edited.
-
-`create_app(model=..., backend=...)` supports independent state and a replacement
-backend without changing the view. The default backend is `BoundedBackend`.
-
-## Application model
-
-`ApplicationModel` owns an immutable `ApplicationState` snapshot with applied
-source/name, draft/name, revision, operation results, artifact availability, and
-active operation. It uses only shared contracts and transport validation, not
-FastAPI, browser code, the constructor reader, or the interpreter.
-
-- `start_manual_input` opens a blank draft without replacing applied source;
-  `set_draft` keeps edits, including invalid text, available for correction.
-- `apply_changes` validates and applies edited text. `discard_changes` restores
-  the applied text/name without changing its revision or results.
-- `load_source` accepts already-decoded uploads or canned inputs. Accepted loads
-  and edits increment the revision and clear results/artifacts. Invalid loads
-  preserve applied state and retain rejected text as a correctable draft.
-- Dirty state blocks actions and replacement. Busy state also blocks editing,
-  Apply, and Discard. Source operations require applied source; Execute remains
-  unavailable because no generated code exists.
-- `begin_operation` returns the request containing applied text and revision.
-  `finish_operation(request, result)` records matching results and releases busy
-  state. Controller cleanup must call `abort_operation(request)` if needed.
-  Cleanup and late completion from an older request cannot affect newer work.
-
-Malformed constructor syntax can be applied; the backend reports its input error
-when Lint/Interpret runs. The model checks transport validity, not language syntax.
-Source names are labels; the model never reads or modifies the original file.
-
-## Current limitations and remaining work
-
-The browser interface, reader, model, bounded backend, and HTTP controller are
-implemented. The supplied `lambda1.py` is unchanged. Browser verification results
-are recorded in `TESTING.md`. This is a local single-user application; state is
-not persisted after server restart and multiple tabs are not synchronized.
-
-Type-check/Compile remain placeholders. No generated artifacts are created or
-accepted by this model version; Execute stays unavailable. Artifact support is
-reserved for future development, not implemented as an assignment extension.
-
-The required demonstration narrative, final documentation review, and 200–300
-word MVC reflection remain for Step 8; clean-checkout verification remains for
-Step 9.
+A future type checker could replace one backend method while retaining the same
+result metadata and view. A compiler would require additional model support for
+revision-associated artifacts and invalidation, followed by an executor that
+consumes the stored artifact. The existing contracts identify those changes
+without pretending that compilation or generated-code execution already works.

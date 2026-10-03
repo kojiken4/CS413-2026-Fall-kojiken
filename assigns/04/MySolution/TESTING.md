@@ -1,5 +1,18 @@
 # Verification
 
+## Current evidence
+
+| Check | Recorded result | Evidence |
+| --- | --- | --- |
+| Default suite | 364 passed, 7 opt-in browser tests skipped | Step 7 below |
+| Real-browser suite | All 7 passed on Edge 154.0.4258.53 | Step 7 browser observations and F1–F10 mapping |
+| Dependency and JavaScript checks | Passed | Step 7 below |
+| Clean-checkout setup/tests | Not yet performed | Reserved for Step 9 |
+
+Earlier step sections are historical records of incremental checks, including
+what was still pending at each stage. They do not describe current omissions.
+The README demonstration matches the real-tool/browser cases recorded in Step 7.
+
 ## Step 1 checks
 
 Automated tests in `tests/test_foundation.py` cover the landing page response,
@@ -190,6 +203,23 @@ The initial browser run found three test-fixture issues: an incorrect empty-sour
 message expectation, a mishandled delayed route, and an assertion deadline equal
 to the worker timeout. These were corrected before the passing run; no backend
 or supplied interpreter changes were needed.
+
+## Step 8 documentation checks
+
+README now contains exact setup/start/test commands, versions, the required four
+demonstrations, supported input/bounds/limitations, and a **249-word MVC reflection**.
+Local Markdown links and fenced-block balance were checked. Architecture modules,
+contracts, state trace, design tradeoffs, and future artifact support were compared
+with implementation; the condensed document is approximately 904 words excluding
+its diagram.
+
+The documented factorial/Fibonacci, open-to-closed Lint, successful Lint followed
+by division-by-zero evaluation, and placeholder/Execute outcomes were rechecked
+through the controller with real bounded language tools: **passed, exit 0**.
+The runtime diagnostic is `ZeroDivisionError: integer division or modulo by zero`;
+an initial diagnostic assertion was too narrow and was corrected to check the
+actual exception class. No application source, dependencies, or tests were changed.
+The existing Starlette/HTTPX warning appeared during these controller checks.
 
 ## Requirement traceability
 
