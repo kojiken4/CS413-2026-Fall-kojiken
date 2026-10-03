@@ -131,7 +131,7 @@ breaks preserved. Lint and Interpret can be invoked independently.
 
 Sample files in [samples/](samples/) contain factorial, Fibonacci, an open
 variable, division by zero, and invalid constructor input. These demonstrations
-were exercised in the Step 7 browser tests.
+were exercised in the browser tests.
 
 ## Constructor input
 
@@ -185,12 +185,18 @@ Malformed constructor syntax may be applied, then diagnosed by Lint/Interpret.
 
 ## MVC reflection
 
-MVC helped make state ownership explicit. The model owns applied source, drafts,
-revisions, results, and busy state, so rules such as blocking tools during
-unapplied edits can be tested without HTTP or a browser. This also prevents the
-interface from being the only place that protects application state. The view
-renders text and forwards interactions, while the controller coordinates source
-changes and calls the language backend.
+MVC helped make state ownership explicit for all application states.
+The model owns applied source, drafts, revisions, results, and busy state, 
+so rules such as blocking tools during unapplied edits can be tested without
+HTTP or a browser. This also prevents the interface from being the only place
+that protects application state. The view renders text and forwards interactions,
+while the controller coordinates source changes and calls the language backend.
+
+It took some time defining the separation of concerns between `backend.py`, providing
+the LAMBDA tooling and interpreter, and `model.py`, which handled application logic and
+state validation. Recognizing these differences helped further refine the role of MVC
+in this application, and how to effectively divide responsibilites between different
+components of the application.
 
 The most difficult separation was handling asynchronous work without mixing
 transport concerns into the model. Language operations use a synchronous
