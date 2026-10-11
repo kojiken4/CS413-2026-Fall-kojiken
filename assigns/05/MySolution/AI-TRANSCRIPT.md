@@ -3,8 +3,9 @@
 ## Tool used
 
 OpenAI Codex assisted with assignment review, incremental planning, the solution
-scaffold, pretty printing, name helpers, and substitution. This records AI assistance; it does
-not claim independent human review that has not occurred.
+scaffold, pretty printing, name helpers, substitution, and documentation. This
+records AI assistance; it does not claim independent human review that has not
+occurred.
 
 ## Important prompts and suggestions
 
@@ -126,3 +127,33 @@ binding examples, ran a substitution with division-by-zero syntax while guarding
 against evaluator use, and verified the README substitution example's output.
 The additional persistent regression coverage remains for Step 5.
 No supplied files were changed, and nothing was staged or committed.
+
+## Step 6: Documentation and submission checks
+
+The user requested Step 6 before Step 5. Codex explained that this step would
+finish documentation and verify the existing commands, while the remaining
+regression tests would stay outstanding. No new features or test cases were
+added during this documentation step.
+
+Codex added the required design explanation covering visitor result types,
+substitution context, scoped renaming, and the difference between adding an
+operation and adding a constructor. The README also records the naming policy,
+examples, assumptions, recursion and subtree-sharing limitations, and submission
+file exclusions. Its verification status explicitly distinguishes passing
+existing tests from incomplete assignment-wide regression coverage.
+
+Both documented suite commands were rerun from `assigns/05`:
+
+- unittest: 17 tests passed; exit code 0.
+- pytest: 94 tests passed; exit code 0.
+
+Codex counted the design explanation at 359 words and executed both Python
+examples extracted from the README, confirming that their outputs matched the
+documented text. Git checks confirmed that environments and caches are ignored,
+no generated files are tracked, and only the README and transcript changed in
+this step. No files were staged or committed.
+
+The remaining Step 5 work includes substitution-level nested-shadowing and
+collision cases, repeated-call determinism, preservation of both inputs,
+absence of evaluation, and the specified free-variable properties in both
+automated suites. This transcript does not claim those requirements are complete.

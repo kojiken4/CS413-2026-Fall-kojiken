@@ -39,7 +39,8 @@ as a separate parameterized test, so the reported test counts differ.
 
 ## Pretty-printing example
 
-From `assigns/05`, run this Python code using the local environment:
+From `assigns/05`, start the local Python interpreter with
+`./MySolution/.venv/Scripts/python.exe -B`, then run the following Python code:
 
 ```python
 from lambda1_vp import D0Eapp, D0Elam, D0Eop2, D0Evar, D0Eint
@@ -64,6 +65,8 @@ ASTs. Operators and names are printed literally, without evaluation or input
 validation.
 
 ## Substitution example
+
+Run this example in the same interpreter:
 
 ```python
 from lambda1_vp import D0Elam, D0Eop2, D0Evar
@@ -123,15 +126,71 @@ parameter order. When fix binder names are equal, a conflict produces one fresh
 name for both declarations, preserving parameter shadowing. Binders are not
 renamed when no substitution can occur in their body.
 
-## Current implementation
+## Design explanation
 
-Pretty printing is implemented through `PrettyPrintVisitor`, whose result type
-is `str`. Every child expression dispatches through `accept`.
-The name-collection and scoped-renaming visitors and fresh-name generator are
-implemented and tested. They preserve input ASTs and do not evaluate expressions.
-Capture-avoiding substitution is implemented through `SubstitutionVisitor`, whose
-result is an expression. It carries the target, replacement, replacement's free
-variables, and shared fresh-name generator. The public entry point initializes
-this context; direct visitor callers must reserve all input names and the target
-in their generator. The required 300–500-word design explanation will be added
-when documentation is finalized.
+The supplied expression classes represent syntax, while visitors implement
+operations on that syntax. Each expression's `accept` method selects the matching
+visitor method. Every recursive traversal in the solution uses this dispatch,
+including name collection and renaming. The interpreter and expression classes
+remain unchanged.
+
+The visitor interface is generic in its result type. `PrettyPrintVisitor` returns
+`str`, `AllNamesVisitor` returns `frozenset[str]`, and the renaming and substitution
+visitors return expressions. Pretty printing recursively combines child strings
+with the required punctuation and spaces. It never evaluates an operator, so
+division-by-zero syntax can be printed safely. Name collection includes binder
+declarations even when no occurrence uses them, which prevents fresh names from
+colliding with existing bound names.
+
+`d0exp_substitute` initializes context for one substitution: the target variable,
+replacement expression, replacement's free variables, and a fresh-name generator.
+The generator reserves names from both input trees and the target. One visitor
+shares this context throughout the traversal, while each public call creates a
+new generator. A matching variable returns the replacement directly, without
+traversing it. Other nonbinding forms rebuild their children and preserve their
+constructors and operators. Input fields are never assigned, and unchanged
+subtrees may be reused.
+
+Binding methods first determine whether substitution can occur in their bodies.
+A lambda binds its parameter; a fix binds its function name and parameter. A let
+binds only in its body, so its initializer is always processed separately. When a
+binder conflicts with the replacement's free variables, substitution generates a
+fresh name and applies `ScopedRenameVisitor` to the body before insertion. The
+helper changes occurrences belonging to that outer scope, stopping where nested
+binders shadow the old name. The caller updates the outer declaration. Equal fix
+names receive the same fresh name, preserving parameter shadowing.
+
+Adding an operation requires a new visitor implementing every existing visit
+method, but no edits to expression classes. Adding an expression constructor
+would instead require its class and dispatch method, a corresponding method in
+the visitor interface, and support in each existing visitor. This design makes
+new operations local while spreading constructor additions across operations.
+The separate unittest and pytest suites verify explicit outputs and AST
+structures; they share examples without depending on each other's tests.
+
+## Known limitations and verification status
+
+- Inputs are assumed to be valid supplied ASTs with the identifier syntax stated
+  in the assignment. Input validation is not implemented.
+- Traversals are recursive and subject to Python's recursion limit for deeply
+  nested expressions.
+- Results may share unchanged subtrees and the replacement with the inputs.
+  Input preservation during the operation does not imply an independent deep copy.
+- Direct use of `ScopedRenameVisitor` requires a globally fresh new name. Direct
+  use of `SubstitutionVisitor` requires a generator reserving all names from both
+  inputs and the target; `d0exp_substitute` performs this setup automatically.
+
+The existing suites pass, but the remaining regression coverage is incomplete.
+Both suites still need substitution-level tests combining nested shadowing with
+fresh-name collisions, repeated-call determinism, preservation of both input
+ASTs, absence of evaluation, and the required free-variable properties. Helper
+tests and previous one-off checks do not replace these automated requirements.
+The submission is not yet fully verified against the assignment's testing list.
+
+## Submission files
+
+Submit the Python package, `operations.py`, both test suites, their shared example
+modules, this README, and `AI-TRANSCRIPT.md` under `MySolution/`.
+Keep `.venv/`, `.pytest_cache/`, `__pycache__/`, and compiled Python files out of
+the submission. They are ignored by Git; exclude them explicitly if copying or
+archiving the directory manually. Pytest is the only third-party dependency.
