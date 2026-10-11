@@ -33,7 +33,7 @@ The `-B` option prevents Python bytecode caches, including beside the supplied
 interpreter. The environment and pytest cache are excluded from version control.
 
 Both test commands were verified from `assigns/05` on Python 3.14.7 with pytest
-9.1.1: 13 unittest tests and 62 pytest tests passed, each command exiting with 0.
+9.1.1: 17 unittest tests and 94 pytest tests passed, each command exiting with 0.
 The unittest constructor and helper tests use subtests; pytest runs each example
 as a separate parameterized test, so the reported test counts differ.
 
@@ -63,6 +63,29 @@ newline. It supports every supplied expression constructor and preserves input
 ASTs. Operators and names are printed literally, without evaluation or input
 validation.
 
+## Substitution example
+
+```python
+from lambda1_vp import D0Elam, D0Eop2, D0Evar
+from MySolution.operations import d0exp_pretty, d0exp_substitute
+
+expression = D0Elam("y", D0Eop2("+", D0Evar("x"), D0Evar("y")))
+result = d0exp_substitute(expression, "x", D0Evar("y"))
+print(d0exp_pretty(result))
+```
+
+Output:
+
+```text
+(lam y_1. (y + y_1))
+```
+
+The binder is renamed before insertion, keeping the replacement's `y` free.
+Only free occurrences of the target are replaced. Substitution stops in a body
+where the target is bound, and let initializers are always processed separately.
+The replacement is inserted directly without substituting inside it. Neither
+input AST is mutated, and unchanged subtrees may be shared with the result.
+
 ## Name and renaming helpers
 
 `AllNamesVisitor` returns a `frozenset[str]` containing every variable occurrence
@@ -87,12 +110,18 @@ attempt, including collisions. Accepted names are immediately reserved. The
 same counter is shared across binder names: without collisions, requests for
 `y`, `y`, and `f` produce `y_1`, `y_2`, and `f_3`.
 
-For substitution, the caller will initialize one generator per call with all
-names collected from the original expression and replacement, plus the target.
-Every recursive substitution within that call will share that generator.
+`d0exp_substitute` initializes one generator per call with all names collected
+from the original expression and replacement, plus the target. All recursive
+substitution within that call shares that generator.
 For example, if `y_1`, `y_2`, and `y_3` are reserved, the first fresh name for
 `y` is `y_4`. A new generator starts numbering over, making repeated calls
 deterministic.
+
+Children are visited in constructor order, with a let initializer processed
+before its body. Distinct fix binders are considered in function-name-then-
+parameter order. When fix binder names are equal, a conflict produces one fresh
+name for both declarations, preserving parameter shadowing. Binders are not
+renamed when no substitution can occur in their body.
 
 ## Current implementation
 
@@ -100,6 +129,9 @@ Pretty printing is implemented through `PrettyPrintVisitor`, whose result type
 is `str`. Every child expression dispatches through `accept`.
 The name-collection and scoped-renaming visitors and fresh-name generator are
 implemented and tested. They preserve input ASTs and do not evaluate expressions.
-Capture-avoiding substitution is not yet implemented. Its examples and the
-required 300–500-word design explanation will be documented with the
-corresponding implementation steps.
+Capture-avoiding substitution is implemented through `SubstitutionVisitor`, whose
+result is an expression. It carries the target, replacement, replacement's free
+variables, and shared fresh-name generator. The public entry point initializes
+this context; direct visitor callers must reserve all input names and the target
+in their generator. The required 300–500-word design explanation will be added
+when documentation is finalized.

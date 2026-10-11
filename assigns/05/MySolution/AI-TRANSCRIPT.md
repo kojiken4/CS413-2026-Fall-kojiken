@@ -3,7 +3,7 @@
 ## Tool used
 
 OpenAI Codex assisted with assignment review, incremental planning, the solution
-scaffold, pretty printing, and name helpers. This records AI assistance; it does
+scaffold, pretty printing, name helpers, and substitution. This records AI assistance; it does
 not claim independent human review that has not occurred.
 
 ## Important prompts and suggestions
@@ -92,3 +92,37 @@ Both documented commands were run from `assigns/05`:
 Codex reviewed the scope rules against `Assign05.md` and kept expression traversal
 inside visitor methods. No supplied files were changed, and nothing was staged or
 committed. Integration of these helpers into substitution remains for Step 4.
+
+## Step 4: Capture-avoiding substitution
+
+The user asked Codex to continue and confirmed that the prior step prepared
+alpha-renaming for safe substitution. Codex explained that the helpers would now
+rename conflicting binders before replacement insertion.
+
+Codex implemented `SubstitutionVisitor` and `d0exp_substitute` for all 13
+constructors. The visitor carries the target, replacement, replacement's free
+variables, and one call-local fresh-name generator. It uses the supplied
+`d0exp_fvset` and the previous helpers, without evaluating expressions or changing
+input nodes. Let initializers are processed before their bodies. Distinct fix
+binders are renamed in function-then-parameter order; equal fix names are renamed
+together to preserve parameter shadowing. No renaming occurs in binder bodies
+where the target is bound or absent.
+
+Tests were added before implementation. The single-insertion test first failed
+because the entry point did not exist, then passed after implementation. Shared
+examples in `substitution_cases.py` provide explicit expected ASTs for each
+constructor, all assignment examples, both fix binders, equal-name fix binders,
+capture conflicts with both distinct fix names, and unnecessary-renaming cases.
+Each suite additionally checks direct visitor dispatch and the exact reuse of a
+replacement containing the target.
+
+Both documented commands were run from `assigns/05`:
+
+- unittest: 17 tests passed, including structural substitution subtests; exit code 0.
+- pytest: 94 tests passed, including parameterized substitution cases; exit code 0.
+
+Codex also checked both input ASTs against independent snapshots for all shared
+binding examples, ran a substitution with division-by-zero syntax while guarding
+against evaluator use, and verified the README substitution example's output.
+The additional persistent regression coverage remains for Step 5.
+No supplied files were changed, and nothing was staged or committed.

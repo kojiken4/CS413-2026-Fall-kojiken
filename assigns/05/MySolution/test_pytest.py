@@ -8,6 +8,7 @@ import pytest
 import lambda1_vp as ast
 from MySolution import operations
 from MySolution.helper_cases import all_names_cases, scoped_rename_cases
+from MySolution.substitution_cases import constructor_substitution_cases, binding_substitution_cases
 
 
 def test_solution_module_imports():
@@ -130,3 +131,30 @@ def test_fresh_names_are_unique_and_deterministic():
     assert [first.fresh(name) for name in ("y", "y", "f", "_x")] == expected
     assert [second.fresh(name) for name in ("y", "y", "f", "_x")] == expected
     assert len(set(expected)) == len(expected)
+
+
+@pytest.mark.parametrize("expression, expected", constructor_substitution_cases())
+def test_substitution_through_every_constructor(expression, expected):
+    assert operations.d0exp_substitute(expression, "x", ast.D0Eint(3)) == expected
+
+
+@pytest.mark.parametrize("expression, target, replacement, expected", binding_substitution_cases())
+def test_binding_rules_and_capture_avoidance(expression, target, replacement, expected):
+    assert operations.d0exp_substitute(expression, target, replacement) == expected
+
+
+def test_replacement_is_inserted_once_and_reused_exactly():
+    replacement = ast.D0Eop2("+", ast.D0Evar("x"), ast.D0Eint(1))
+    expression = ast.D0Epair(ast.D0Evar("x"), ast.D0Evar("x"))
+    result = operations.d0exp_substitute(expression, "x", replacement)
+    assert result == ast.D0Epair(replacement, replacement)
+    assert result.arg1 is replacement
+    assert result.arg2 is replacement
+
+
+def test_direct_substitution_visitor_dispatch():
+    expression = ast.D0Elam("y", ast.D0Evar("x"))
+    replacement = ast.D0Evar("y")
+    reserved = expression.accept(operations.AllNamesVisitor()) | replacement.accept(operations.AllNamesVisitor()) | {"x"}
+    visitor = operations.SubstitutionVisitor("x", replacement, operations.FreshNameGenerator(reserved))
+    assert expression.accept(visitor) == ast.D0Elam("y_1", ast.D0Evar("y"))

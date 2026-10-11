@@ -208,3 +208,106 @@ class FreshNameGenerator:
             if candidate not in self._reserved:
                 self._reserved.add(candidate)
                 return candidate
+
+
+class SubstitutionVisitor(ast.D0ExpVisitor[ast.d0exp]):
+    """Replace free occurrences, preserving scope without evaluation or mutation.
+
+    The fresh-name generator must reserve every name from the original expression
+    and replacement, plus the target. Use d0exp_substitute to set this up.
+    """
+
+    def __init__(
+        self, variable: str, replacement: ast.d0exp, fresh_names: FreshNameGenerator
+    ) -> None:
+        self.variable = variable
+        self.replacement = replacement
+        self.replacement_free = ast.d0exp_fvset(replacement)
+        self.fresh_names = fresh_names
+
+    def _rename_binder(self, name: str, body: ast.d0exp) -> tuple[str, ast.d0exp]:
+        """Rename a conflicting declaration and the occurrences it binds."""
+        if name in self.replacement_free:
+            new_name = self.fresh_names.fresh(name)
+            return new_name, body.accept(ScopedRenameVisitor(name, new_name))
+        return name, body
+
+    def visit_int(self, expression: ast.D0Eint) -> ast.d0exp:
+        return expression
+
+    def visit_btf(self, expression: ast.D0Ebtf) -> ast.d0exp:
+        return expression
+
+    def visit_var(self, expression: ast.D0Evar) -> ast.d0exp:
+        if expression.arg1 == self.variable:
+            return self.replacement
+        return expression
+
+    def visit_op1(self, expression: ast.D0Eop1) -> ast.d0exp:
+        return ast.D0Eop1(expression.name, expression.arg1.accept(self))
+
+    def visit_op2(self, expression: ast.D0Eop2) -> ast.d0exp:
+        return ast.D0Eop2(
+            expression.name, expression.arg1.accept(self), expression.arg2.accept(self)
+        )
+
+    def visit_lam(self, expression: ast.D0Elam) -> ast.d0exp:
+        name, body = expression.arg1, expression.arg2
+        if name == self.variable or self.variable not in ast.d0exp_fvset(body):
+            return expression
+        name, body = self._rename_binder(name, body)
+        return ast.D0Elam(name, body.accept(self))
+
+    def visit_fix(self, expression: ast.D0Efix) -> ast.d0exp:
+        function, parameter, body = expression.arg1, expression.arg2, expression.arg3
+        if (
+            self.variable in (function, parameter)
+            or self.variable not in ast.d0exp_fvset(body)
+        ):
+            return expression
+        if function == parameter:
+            # Keep the two declarations equal so the parameter still shadows
+            # the function name; occurrences in the body refer to the parameter.
+            parameter, body = self._rename_binder(parameter, body)
+            function = parameter
+        else:
+            function, body = self._rename_binder(function, body)
+            parameter, body = self._rename_binder(parameter, body)
+        return ast.D0Efix(function, parameter, body.accept(self))
+
+    def visit_app(self, expression: ast.D0Eapp) -> ast.d0exp:
+        return ast.D0Eapp(expression.arg1.accept(self), expression.arg2.accept(self))
+
+    def visit_if0(self, expression: ast.D0Eif0) -> ast.d0exp:
+        return ast.D0Eif0(
+            expression.arg1.accept(self),
+            expression.arg2.accept(self),
+            expression.arg3.accept(self),
+        )
+
+    def visit_let(self, expression: ast.D0Elet) -> ast.d0exp:
+        initializer = expression.arg2.accept(self)
+        name, body = expression.arg1, expression.arg3
+        if name != self.variable and self.variable in ast.d0exp_fvset(body):
+            name, body = self._rename_binder(name, body)
+            body = body.accept(self)
+        return ast.D0Elet(name, initializer, body)
+
+    def visit_pair(self, expression: ast.D0Epair) -> ast.d0exp:
+        return ast.D0Epair(expression.arg1.accept(self), expression.arg2.accept(self))
+
+    def visit_pfst(self, expression: ast.D0Epfst) -> ast.d0exp:
+        return ast.D0Epfst(expression.arg1.accept(self))
+
+    def visit_psnd(self, expression: ast.D0Epsnd) -> ast.d0exp:
+        return ast.D0Epsnd(expression.arg1.accept(self))
+
+
+def d0exp_substitute(
+    expression: ast.d0exp, variable: str, replacement: ast.d0exp
+) -> ast.d0exp:
+    """Perform one capture-avoiding substitution using call-local fresh names."""
+    names = AllNamesVisitor()
+    reserved = expression.accept(names) | replacement.accept(names) | {variable}
+    visitor = SubstitutionVisitor(variable, replacement, FreshNameGenerator(reserved))
+    return expression.accept(visitor)

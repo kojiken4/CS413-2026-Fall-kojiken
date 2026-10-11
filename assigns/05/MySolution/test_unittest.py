@@ -7,6 +7,7 @@ from unittest.mock import patch
 import lambda1_vp as ast
 from MySolution import operations
 from MySolution.helper_cases import all_names_cases, scoped_rename_cases
+from MySolution.substitution_cases import constructor_substitution_cases, binding_substitution_cases
 
 
 class SolutionSmokeTests(unittest.TestCase):
@@ -133,6 +134,33 @@ class NameHelperTests(unittest.TestCase):
         self.assertEqual([first.fresh(name) for name in ("y", "y", "f", "_x")], expected)
         self.assertEqual([second.fresh(name) for name in ("y", "y", "f", "_x")], expected)
         self.assertEqual(len(set(expected)), len(expected))
+
+
+class SubstitutionTests(unittest.TestCase):
+    def test_substitution_through_every_constructor(self):
+        for expression, expected in constructor_substitution_cases():
+            with self.subTest(expression=expression):
+                self.assertEqual(operations.d0exp_substitute(expression, "x", ast.D0Eint(3)), expected)
+
+    def test_binding_rules_and_capture_avoidance(self):
+        for expression, target, replacement, expected in binding_substitution_cases():
+            with self.subTest(expression=expression, target=target):
+                self.assertEqual(operations.d0exp_substitute(expression, target, replacement), expected)
+
+    def test_replacement_is_inserted_once_and_reused_exactly(self):
+        replacement = ast.D0Eop2("+", ast.D0Evar("x"), ast.D0Eint(1))
+        expression = ast.D0Epair(ast.D0Evar("x"), ast.D0Evar("x"))
+        result = operations.d0exp_substitute(expression, "x", replacement)
+        self.assertEqual(result, ast.D0Epair(replacement, replacement))
+        self.assertIs(result.arg1, replacement)
+        self.assertIs(result.arg2, replacement)
+
+    def test_direct_substitution_visitor_dispatch(self):
+        expression = ast.D0Elam("y", ast.D0Evar("x"))
+        replacement = ast.D0Evar("y")
+        reserved = expression.accept(operations.AllNamesVisitor()) | replacement.accept(operations.AllNamesVisitor()) | {"x"}
+        visitor = operations.SubstitutionVisitor("x", replacement, operations.FreshNameGenerator(reserved))
+        self.assertEqual(expression.accept(visitor), ast.D0Elam("y_1", ast.D0Evar("y")))
 
 
 if __name__ == "__main__":
