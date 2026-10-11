@@ -2,9 +2,9 @@
 
 ## Tool used
 
-OpenAI Codex assisted with assignment review, incremental planning, and the
-solution scaffold and pretty printing. This records AI assistance; it does not claim independent
-human review that has not occurred.
+OpenAI Codex assisted with assignment review, incremental planning, the solution
+scaffold, pretty printing, and name helpers. This records AI assistance; it does
+not claim independent human review that has not occurred.
 
 ## Important prompts and suggestions
 
@@ -63,3 +63,32 @@ Both documented test commands were run from `assigns/05`:
 
 The README example was also run and produced `((lam x. (x + 1)) 4)`.
 No supplied interpreter files were changed, and Codex did not stage or commit.
+
+## Step 3: Name collection, scoped renaming, and fresh names
+
+The user asked Codex to proceed to the next step. Codex explained the three
+helpers and kept substitution itself outside this step's changes.
+
+Codex added `AllNamesVisitor`, `ScopedRenameVisitor`, and `FreshNameGenerator`.
+Name collection includes every binder declaration, even unused bound names.
+Scoped renaming stops at nested binders that shadow the old name and processes
+let initializers separately from their bodies. Its caller must provide a globally
+fresh new name and update the outer binder declaration. The generator uses one
+counter, advances on every candidate attempt, and reserves each accepted name.
+
+Both suites share only example inputs and explicit expected ASTs/name sets in
+`helper_cases.py`; their tests and assertions remain independent. The scoped
+renaming test first failed because the helper did not exist. After implementation,
+tests checked every constructor, nested shadowing, both fix binders including
+equal names, let initializer scope, input preservation, absence of evaluation,
+and collisions with names from both ASTs and the target. Repeated requests and
+separate generators check unique, deterministic results.
+
+Both documented commands were run from `assigns/05`:
+
+- unittest: 13 tests passed, including constructor and helper subtests; exit code 0.
+- pytest: 62 tests passed, including parameterized helper cases; exit code 0.
+
+Codex reviewed the scope rules against `Assign05.md` and kept expression traversal
+inside visitor methods. No supplied files were changed, and nothing was staged or
+committed. Integration of these helpers into substitution remains for Step 4.

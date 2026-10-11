@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 import lambda1_vp as ast
 from MySolution import operations
+from MySolution.helper_cases import all_names_cases, scoped_rename_cases
 
 
 class SolutionSmokeTests(unittest.TestCase):
@@ -82,6 +83,56 @@ class PrettyPrintTests(unittest.TestCase):
         snapshot = deepcopy(expression)
         self.assertEqual(operations.d0exp_pretty(expression), "(lam x. (pair x 1))")
         self.assertEqual(expression, snapshot)
+
+
+class NameHelperTests(unittest.TestCase):
+    def test_all_names_including_unused_binders(self):
+        visitor = operations.AllNamesVisitor()
+        for expression, expected in all_names_cases():
+            with self.subTest(expression=expression):
+                snapshot = deepcopy(expression)
+                self.assertEqual(expression.accept(visitor), expected)
+                self.assertEqual(expression, snapshot)
+
+    def test_scoped_renaming_and_input_preservation(self):
+        visitor = operations.ScopedRenameVisitor("x", "x_1")
+        for expression, expected in scoped_rename_cases():
+            with self.subTest(expression=expression):
+                snapshot = deepcopy(expression)
+                self.assertEqual(expression.accept(visitor), expected)
+                self.assertEqual(expression, snapshot)
+
+    def test_helpers_do_not_evaluate(self):
+        expression = ast.D0Eop2("/", ast.D0Evar("x"), ast.D0Eint(0))
+        with patch.object(ast.EvaluateVisitor, "visit_op2", side_effect=AssertionError("unexpected evaluation")):
+            self.assertEqual(expression.accept(operations.AllNamesVisitor()), frozenset({"x"}))
+            self.assertEqual(
+                expression.accept(operations.ScopedRenameVisitor("x", "x_1")),
+                ast.D0Eop2("/", ast.D0Evar("x_1"), ast.D0Eint(0)),
+            )
+
+    def test_fresh_names_avoid_both_inputs_and_target(self):
+        expression = ast.D0Elam("y_1", ast.D0Evar("x"))
+        replacement = ast.D0Elam("y_2", ast.D0Evar("y"))
+        target = "y_3"
+        reserved = (
+            expression.accept(operations.AllNamesVisitor())
+            | replacement.accept(operations.AllNamesVisitor())
+            | {target}
+        )
+        generator = operations.FreshNameGenerator(reserved)
+        self.assertEqual(generator.fresh("y"), "y_4")
+        self.assertEqual(generator.fresh("y"), "y_5")
+        self.assertEqual(generator.fresh("f"), "f_6")
+        self.assertEqual(reserved, frozenset({"y_1", "x", "y_2", "y", "y_3"}))
+
+    def test_fresh_names_are_unique_and_deterministic(self):
+        first = operations.FreshNameGenerator(frozenset())
+        second = operations.FreshNameGenerator(frozenset())
+        expected = ["y_1", "y_2", "f_3", "_x_4"]
+        self.assertEqual([first.fresh(name) for name in ("y", "y", "f", "_x")], expected)
+        self.assertEqual([second.fresh(name) for name in ("y", "y", "f", "_x")], expected)
+        self.assertEqual(len(set(expected)), len(expected))
 
 
 if __name__ == "__main__":

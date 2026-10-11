@@ -33,8 +33,8 @@ The `-B` option prevents Python bytecode caches, including beside the supplied
 interpreter. The environment and pytest cache are excluded from version control.
 
 Both test commands were verified from `assigns/05` on Python 3.14.7 with pytest
-9.1.1: 8 unittest tests and 23 pytest tests passed, each command exiting with 0.
-The unittest constructor test uses subtests; pytest runs each constructor example
+9.1.1: 13 unittest tests and 62 pytest tests passed, each command exiting with 0.
+The unittest constructor and helper tests use subtests; pytest runs each example
 as a separate parameterized test, so the reported test counts differ.
 
 ## Pretty-printing example
@@ -63,10 +63,43 @@ newline. It supports every supplied expression constructor and preserves input
 ASTs. Operators and names are printed literally, without evaluation or input
 validation.
 
+## Name and renaming helpers
+
+`AllNamesVisitor` returns a `frozenset[str]` containing every variable occurrence
+and binder declaration, including unused binders. Operator names are not variable
+names. All expression forms dispatch through `accept`.
+
+`ScopedRenameVisitor(old_name, new_name)` returns an expression with free
+occurrences of `old_name` renamed within the region passed to it. It leaves
+nested binder declarations unchanged and stops in bodies where a lambda or
+either `fix` binder shadows `old_name`. A `let` initializer is always visited;
+its body is left alone when its bound name shadows `old_name`.
+
+The caller must supply a globally fresh `new_name`. To alpha-rename a binder,
+the caller applies this visitor to that binder's body and separately updates
+the outer declaration. This helper alone does not perform substitution.
+
+## Fresh-name policy
+
+`FreshNameGenerator` copies its reserved-name set and starts one counter at 1.
+For a binder named `y`, it tries `y_<counter>`, advancing the counter on every
+attempt, including collisions. Accepted names are immediately reserved. The
+same counter is shared across binder names: without collisions, requests for
+`y`, `y`, and `f` produce `y_1`, `y_2`, and `f_3`.
+
+For substitution, the caller will initialize one generator per call with all
+names collected from the original expression and replacement, plus the target.
+Every recursive substitution within that call will share that generator.
+For example, if `y_1`, `y_2`, and `y_3` are reserved, the first fresh name for
+`y` is `y_4`. A new generator starts numbering over, making repeated calls
+deterministic.
+
 ## Current implementation
 
 Pretty printing is implemented through `PrettyPrintVisitor`, whose result type
 is `str`. Every child expression dispatches through `accept`.
-Capture-avoiding substitution is not yet implemented. Its examples, fresh-name
-policy, and the required 300–500-word design explanation will be documented
-with the corresponding implementation steps.
+The name-collection and scoped-renaming visitors and fresh-name generator are
+implemented and tested. They preserve input ASTs and do not evaluate expressions.
+Capture-avoiding substitution is not yet implemented. Its examples and the
+required 300–500-word design explanation will be documented with the
+corresponding implementation steps.

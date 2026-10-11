@@ -7,6 +7,7 @@ import pytest
 
 import lambda1_vp as ast
 from MySolution import operations
+from MySolution.helper_cases import all_names_cases, scoped_rename_cases
 
 
 def test_solution_module_imports():
@@ -81,3 +82,51 @@ def test_printing_preserves_input():
     snapshot = deepcopy(expression)
     assert operations.d0exp_pretty(expression) == "(lam x. (pair x 1))"
     assert expression == snapshot
+
+
+@pytest.mark.parametrize("expression, expected", all_names_cases())
+def test_all_names_including_unused_binders(expression, expected):
+    snapshot = deepcopy(expression)
+    assert expression.accept(operations.AllNamesVisitor()) == expected
+    assert expression == snapshot
+
+
+@pytest.mark.parametrize("expression, expected", scoped_rename_cases())
+def test_scoped_renaming_and_input_preservation(expression, expected):
+    snapshot = deepcopy(expression)
+    assert expression.accept(operations.ScopedRenameVisitor("x", "x_1")) == expected
+    assert expression == snapshot
+
+
+def test_helpers_do_not_evaluate():
+    expression = ast.D0Eop2("/", ast.D0Evar("x"), ast.D0Eint(0))
+    with patch.object(ast.EvaluateVisitor, "visit_op2", side_effect=AssertionError("unexpected evaluation")):
+        assert expression.accept(operations.AllNamesVisitor()) == frozenset({"x"})
+        assert expression.accept(operations.ScopedRenameVisitor("x", "x_1")) == (
+            ast.D0Eop2("/", ast.D0Evar("x_1"), ast.D0Eint(0))
+        )
+
+
+def test_fresh_names_avoid_both_inputs_and_target():
+    expression = ast.D0Elam("y_1", ast.D0Evar("x"))
+    replacement = ast.D0Elam("y_2", ast.D0Evar("y"))
+    target = "y_3"
+    reserved = (
+        expression.accept(operations.AllNamesVisitor())
+        | replacement.accept(operations.AllNamesVisitor())
+        | {target}
+    )
+    generator = operations.FreshNameGenerator(reserved)
+    assert generator.fresh("y") == "y_4"
+    assert generator.fresh("y") == "y_5"
+    assert generator.fresh("f") == "f_6"
+    assert reserved == frozenset({"y_1", "x", "y_2", "y", "y_3"})
+
+
+def test_fresh_names_are_unique_and_deterministic():
+    first = operations.FreshNameGenerator(frozenset())
+    second = operations.FreshNameGenerator(frozenset())
+    expected = ["y_1", "y_2", "f_3", "_x_4"]
+    assert [first.fresh(name) for name in ("y", "y", "f", "_x")] == expected
+    assert [second.fresh(name) for name in ("y", "y", "f", "_x")] == expected
+    assert len(set(expected)) == len(expected)
