@@ -8,7 +8,10 @@ import pytest
 import lambda1_vp as ast
 from MySolution import operations
 from MySolution.helper_cases import all_names_cases, scoped_rename_cases
-from MySolution.substitution_cases import constructor_substitution_cases, binding_substitution_cases
+from MySolution.substitution_cases import (
+    constructor_substitution_cases, binding_substitution_cases,
+    regression_substitution_cases,
+)
 
 
 def test_solution_module_imports():
@@ -158,3 +161,61 @@ def test_direct_substitution_visitor_dispatch():
     reserved = expression.accept(operations.AllNamesVisitor()) | replacement.accept(operations.AllNamesVisitor()) | {"x"}
     visitor = operations.SubstitutionVisitor("x", replacement, operations.FreshNameGenerator(reserved))
     assert expression.accept(visitor) == ast.D0Elam("y_1", ast.D0Evar("y"))
+
+
+@pytest.mark.parametrize("label, expression, target, replacement, expected", regression_substitution_cases())
+def test_scope_and_fresh_name_interactions(label, expression, target, replacement, expected):
+    result = operations.d0exp_substitute(expression, target, replacement)
+    assert operations.d0exp_pretty(result) == expected
+
+
+@pytest.mark.parametrize("label, expression, target, replacement, expected", regression_substitution_cases())
+def test_both_inputs_preserved_and_calls_are_deterministic(label, expression, target, replacement, expected):
+    original = deepcopy(expression)
+    original_replacement = deepcopy(replacement)
+    first = operations.d0exp_substitute(expression, target, replacement)
+    second = operations.d0exp_substitute(expression, target, replacement)
+    assert operations.d0exp_pretty(first) == expected
+    assert second == first
+    assert expression == original
+    assert replacement == original_replacement
+
+
+@pytest.mark.parametrize("expression, target, replacement, expected", binding_substitution_cases())
+def test_free_variable_property_with_structural_checks(expression, target, replacement, expected):
+    result = operations.d0exp_substitute(expression, target, replacement)
+    assert result == expected
+    free_before = ast.d0exp_fvset(expression)
+    if target in free_before:
+        assert ast.d0exp_fvset(result) == (free_before - {target}) | ast.d0exp_fvset(replacement)
+    else:
+        assert result == expression
+        assert ast.d0exp_fvset(result) == free_before
+
+
+@pytest.mark.parametrize("label, expression, target, replacement, expected", regression_substitution_cases())
+def test_free_variable_property_for_nested_scope_cases(label, expression, target, replacement, expected):
+    result = operations.d0exp_substitute(expression, target, replacement)
+    assert operations.d0exp_pretty(result) == expected
+    free_before = ast.d0exp_fvset(expression)
+    if target in free_before:
+        assert ast.d0exp_fvset(result) == (free_before - {target}) | ast.d0exp_fvset(replacement)
+    else:
+        assert result == expression
+        assert ast.d0exp_fvset(result) == free_before
+
+
+def test_printing_and_substitution_do_not_evaluate_or_simplify():
+    expression = ast.D0Elam("y", ast.D0Eop2("/", ast.D0Evar("x"), ast.D0Eint(0)))
+    replacement = ast.D0Eop2("+", ast.D0Evar("y"), ast.D0Eint(1))
+    original, original_replacement = deepcopy(expression), deepcopy(replacement)
+    with (
+        patch.object(ast, "d0exp_evaluate", side_effect=AssertionError("unexpected evaluation")),
+        patch.object(ast.EvaluateVisitor, "visit_op2", side_effect=AssertionError("unexpected evaluation")),
+    ):
+        assert operations.d0exp_pretty(expression) == "(lam y. (x / 0))"
+        result = operations.d0exp_substitute(expression, "x", replacement)
+        assert operations.d0exp_pretty(result) == "(lam y_1. ((y + 1) / 0))"
+        assert result == ast.D0Elam("y_1", ast.D0Eop2("/", replacement, ast.D0Eint(0)))
+    assert expression == original
+    assert replacement == original_replacement

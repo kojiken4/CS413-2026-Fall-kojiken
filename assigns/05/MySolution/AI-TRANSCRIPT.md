@@ -157,3 +157,34 @@ The remaining Step 5 work includes substitution-level nested-shadowing and
 collision cases, repeated-call determinism, preservation of both inputs,
 absence of evaluation, and the specified free-variable properties in both
 automated suites. This transcript does not claim those requirements are complete.
+
+## Final regression coverage
+
+The user requested the remaining regression tests after documentation and asked
+for a commit message that follows naturally from the documentation work. Codex
+explained the scope, added tests in both independent suites, and updated the
+README's current verification status. Historical results above describe the
+state at their respective steps; the previously outstanding coverage is now
+implemented.
+
+Shared regression inputs have explicit expected pretty-printing outputs under
+the documented fresh-name policy. They cover nested lambda, let, and fix scopes,
+including equal-name fix binders, collisions with bound names from either input,
+the target, and names generated across siblings and let initializer/body regions.
+They also check that scopes without a free target are not unnecessarily renamed.
+
+Both suites check input ASTs against independent deep-copy snapshots and compare
+results across repeated public substitution calls. Free-variable checks cover
+both target-present and target-absent cases and are paired with structural or
+exact-output expectations. A division-by-zero case guards against calls to the
+supplied evaluation entry point and binary-operation evaluator, and checks that
+the result retains unsimplified operator syntax.
+
+Both documented commands were run from `assigns/05`:
+
+- unittest: 22 tests passed, including regression subtests; exit code 0.
+- pytest: 150 tests passed, including parameterized regression cases; exit code 0.
+
+No implementation changes were needed for these tests to pass. Codex reviewed
+coverage against all seven testing requirements and the additional free-variable
+property. No supplied files were changed, and nothing was staged or committed.

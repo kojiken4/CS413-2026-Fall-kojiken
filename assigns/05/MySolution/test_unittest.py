@@ -7,7 +7,10 @@ from unittest.mock import patch
 import lambda1_vp as ast
 from MySolution import operations
 from MySolution.helper_cases import all_names_cases, scoped_rename_cases
-from MySolution.substitution_cases import constructor_substitution_cases, binding_substitution_cases
+from MySolution.substitution_cases import (
+    constructor_substitution_cases, binding_substitution_cases,
+    regression_substitution_cases,
+)
 
 
 class SolutionSmokeTests(unittest.TestCase):
@@ -161,6 +164,71 @@ class SubstitutionTests(unittest.TestCase):
         reserved = expression.accept(operations.AllNamesVisitor()) | replacement.accept(operations.AllNamesVisitor()) | {"x"}
         visitor = operations.SubstitutionVisitor("x", replacement, operations.FreshNameGenerator(reserved))
         self.assertEqual(expression.accept(visitor), ast.D0Elam("y_1", ast.D0Evar("y")))
+
+
+class SubstitutionRegressionTests(unittest.TestCase):
+    def test_scope_and_fresh_name_interactions(self):
+        for label, expression, target, replacement, expected in regression_substitution_cases():
+            with self.subTest(case=label):
+                result = operations.d0exp_substitute(expression, target, replacement)
+                self.assertEqual(operations.d0exp_pretty(result), expected)
+
+    def test_both_inputs_preserved_and_calls_are_deterministic(self):
+        for label, expression, target, replacement, expected in regression_substitution_cases():
+            with self.subTest(case=label):
+                original = deepcopy(expression)
+                original_replacement = deepcopy(replacement)
+                first = operations.d0exp_substitute(expression, target, replacement)
+                second = operations.d0exp_substitute(expression, target, replacement)
+                self.assertEqual(operations.d0exp_pretty(first), expected)
+                self.assertEqual(second, first)
+                self.assertEqual(expression, original)
+                self.assertEqual(replacement, original_replacement)
+
+    def test_free_variable_property_with_structural_checks(self):
+        for expression, target, replacement, expected in binding_substitution_cases():
+            with self.subTest(expression=expression, target=target):
+                result = operations.d0exp_substitute(expression, target, replacement)
+                self.assertEqual(result, expected)
+                free_before = ast.d0exp_fvset(expression)
+                if target in free_before:
+                    self.assertEqual(
+                        ast.d0exp_fvset(result),
+                        (free_before - {target}) | ast.d0exp_fvset(replacement),
+                    )
+                else:
+                    self.assertEqual(result, expression)
+                    self.assertEqual(ast.d0exp_fvset(result), free_before)
+
+    def test_free_variable_property_for_nested_scope_cases(self):
+        for label, expression, target, replacement, expected in regression_substitution_cases():
+            with self.subTest(case=label):
+                result = operations.d0exp_substitute(expression, target, replacement)
+                self.assertEqual(operations.d0exp_pretty(result), expected)
+                free_before = ast.d0exp_fvset(expression)
+                if target in free_before:
+                    self.assertEqual(
+                        ast.d0exp_fvset(result),
+                        (free_before - {target}) | ast.d0exp_fvset(replacement),
+                    )
+                else:
+                    self.assertEqual(result, expression)
+                    self.assertEqual(ast.d0exp_fvset(result), free_before)
+
+    def test_printing_and_substitution_do_not_evaluate_or_simplify(self):
+        expression = ast.D0Elam("y", ast.D0Eop2("/", ast.D0Evar("x"), ast.D0Eint(0)))
+        replacement = ast.D0Eop2("+", ast.D0Evar("y"), ast.D0Eint(1))
+        original, original_replacement = deepcopy(expression), deepcopy(replacement)
+        with (
+            patch.object(ast, "d0exp_evaluate", side_effect=AssertionError("unexpected evaluation")),
+            patch.object(ast.EvaluateVisitor, "visit_op2", side_effect=AssertionError("unexpected evaluation")),
+        ):
+            self.assertEqual(operations.d0exp_pretty(expression), "(lam y. (x / 0))")
+            result = operations.d0exp_substitute(expression, "x", replacement)
+            self.assertEqual(operations.d0exp_pretty(result), "(lam y_1. ((y + 1) / 0))")
+            self.assertEqual(result, ast.D0Elam("y_1", ast.D0Eop2("/", replacement, ast.D0Eint(0))))
+        self.assertEqual(expression, original)
+        self.assertEqual(replacement, original_replacement)
 
 
 if __name__ == "__main__":

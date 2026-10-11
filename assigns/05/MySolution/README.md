@@ -33,7 +33,7 @@ The `-B` option prevents Python bytecode caches, including beside the supplied
 interpreter. The environment and pytest cache are excluded from version control.
 
 Both test commands were verified from `assigns/05` on Python 3.14.7 with pytest
-9.1.1: 17 unittest tests and 94 pytest tests passed, each command exiting with 0.
+9.1.1: 22 unittest tests and 150 pytest tests passed, each command exiting with 0.
 The unittest constructor and helper tests use subtests; pytest runs each example
 as a separate parameterized test, so the reported test counts differ.
 
@@ -180,12 +180,22 @@ structures; they share examples without depending on each other's tests.
   use of `SubstitutionVisitor` requires a generator reserving all names from both
   inputs and the target; `d0exp_substitute` performs this setup automatically.
 
-The existing suites pass, but the remaining regression coverage is incomplete.
-Both suites still need substitution-level tests combining nested shadowing with
-fresh-name collisions, repeated-call determinism, preservation of both input
-ASTs, absence of evaluation, and the required free-variable properties. Helper
-tests and previous one-off checks do not replace these automated requirements.
-The submission is not yet fully verified against the assignment's testing list.
+Both suites cover the assignment's testing requirements with explicit outputs
+or expected ASTs:
+
+| Requirement | Coverage in each suite |
+| --- | --- |
+| Exact printing | Every constructor, nested expressions, signed and large integers, both booleans |
+| Substitution traversal | Every constructor, matching/nonmatching variables, replacement containing the target |
+| Binding and shadowing | Lambda, let, both fix binders, and equal-name fix binders |
+| Capture avoidance | Lambda, let, either fix binder, and both distinct fix binders together |
+| Nested scopes and freshness | Nested lambda/let/fix shadowing, original/replacement bound-name collisions, target collisions, names shared across one call |
+| Let scope | Initializers processed separately from bodies, including nested initializers under an outer binder |
+| Preservation and determinism | Independent snapshots of both inputs, repeated-call structural equality, guarded no-evaluation checks |
+| Free-variable properties | Target present and absent, paired with structural or exact-output checks |
+
+The tests verify the stated examples and edge cases; passing tests are not a
+formal proof for every possible input AST.
 
 ## Submission files
 
