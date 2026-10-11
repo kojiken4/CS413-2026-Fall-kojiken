@@ -1,7 +1,7 @@
 # Assignment 05
 
 Requires Python 3.12 or later. The local verification interpreter is Python
-3.14.7. This solution imports the supplied `lambda1_vp.py` without modifying it.
+3.14.7. This solution imports the supplied `lambda1_vp.py`.
 
 ## Setup
 
@@ -196,11 +196,3 @@ or expected ASTs:
 
 The tests verify the stated examples and edge cases; passing tests are not a
 formal proof for every possible input AST.
-
-## Submission files
-
-Submit the Python package, `operations.py`, both test suites, their shared example
-modules, this README, and `AI-TRANSCRIPT.md` under `MySolution/`.
-Keep `.venv/`, `.pytest_cache/`, `__pycache__/`, and compiled Python files out of
-the submission. They are ignored by Git; exclude them explicitly if copying or
-archiving the directory manually. Pytest is the only third-party dependency.
