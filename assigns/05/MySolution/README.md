@@ -33,12 +33,40 @@ The `-B` option prevents Python bytecode caches, including beside the supplied
 interpreter. The environment and pytest cache are excluded from version control.
 
 Both test commands were verified from `assigns/05` on Python 3.14.7 with pytest
-9.1.1: 2 unittest tests and 2 pytest tests passed, each command exiting with 0.
+9.1.1: 8 unittest tests and 23 pytest tests passed, each command exiting with 0.
+The unittest constructor test uses subtests; pytest runs each constructor example
+as a separate parameterized test, so the reported test counts differ.
+
+## Pretty-printing example
+
+From `assigns/05`, run this Python code using the local environment:
+
+```python
+from lambda1_vp import D0Eapp, D0Elam, D0Eop2, D0Evar, D0Eint
+from MySolution.operations import d0exp_pretty
+
+expression = D0Eapp(
+    D0Elam("x", D0Eop2("+", D0Evar("x"), D0Eint(1))),
+    D0Eint(4),
+)
+print(d0exp_pretty(expression))
+```
+
+Output:
+
+```text
+((lam x. (x + 1)) 4)
+```
+
+`d0exp_pretty` returns a string without a final newline; `print` adds the displayed
+newline. It supports every supplied expression constructor and preserves input
+ASTs. Operators and names are printed literally, without evaluation or input
+validation.
 
 ## Current implementation
 
-The package and both suites currently verify imports and dispatch through the
-supplied Visitor interface. Pretty printing and substitution are not yet
-implemented. Operation examples, the fresh-name policy, known limitations, and
-the required 300–500-word design explanation will be documented with the
-corresponding implementation steps.
+Pretty printing is implemented through `PrettyPrintVisitor`, whose result type
+is `str`. Every child expression dispatches through `accept`.
+Capture-avoiding substitution is not yet implemented. Its examples, fresh-name
+policy, and the required 300–500-word design explanation will be documented
+with the corresponding implementation steps.

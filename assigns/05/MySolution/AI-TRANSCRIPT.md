@@ -3,7 +3,7 @@
 ## Tool used
 
 OpenAI Codex assisted with assignment review, incremental planning, and the
-solution scaffold. This records AI assistance; it does not claim independent
+solution scaffold and pretty printing. This records AI assistance; it does not claim independent
 human review that has not occurred.
 
 ## Important prompts and suggestions
@@ -38,3 +38,28 @@ the sandbox and installed only into the local virtual environment.
 
 The user will review and commit the changes separately. Codex has not staged or
 committed them.
+
+## Step 2: Exact pretty printing
+
+The user asked Codex to continue to the next planned step. Codex explained that
+this step covered pretty printing and its tests, leaving substitution for later.
+
+Codex added `PrettyPrintVisitor` and `d0exp_pretty`. All 13 expression forms
+dispatch through the supplied Visitor interface, and child expressions recurse
+through `accept`. Formatting follows the assignment's table; names and operators
+are inserted literally without evaluation or mutation.
+
+Tests were added before implementation. The assignment-example test first failed
+because `d0exp_pretty` did not exist, then passed after implementation. Both
+independent suites check all constructors, nested expressions, signed and large
+integers, booleans, literal operators and names, and input preservation. A
+division-by-zero test also guards the evaluator's binary-operation method against
+being called.
+
+Both documented test commands were run from `assigns/05`:
+
+- unittest: 8 tests passed, including constructor subtests; exit code 0.
+- pytest: 23 tests passed, including parameterized constructor cases; exit code 0.
+
+The README example was also run and produced `((lam x. (x + 1)) 4)`.
+No supplied interpreter files were changed, and Codex did not stage or commit.
