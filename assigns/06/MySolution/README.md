@@ -2,7 +2,7 @@
 
 ## Current status
 
-Steps 1–9 provide the Python package, source-AST adapter, immutable target terms,
+The implementation provides the Python package, source-AST adapter, immutable target terms,
 printing, name analysis, deterministic fresh names, capture-avoiding substitution,
 alpha-equivalence checking, and one shared evaluator for source and target
 programs. Church data, arithmetic, comparisons, boolean operations, pairs, and
@@ -10,11 +10,16 @@ bounded scalar/nested-pair observation are implemented. Visitor compilation
 connects every required source form to target execution and observation, including
 delayed conditionals, short-circuit booleans, and recursion through CBV Z. One
 command now runs all 14 required demonstrations and saves their pure target
-terms. Final design/presentation/recording deliverables remain pending. Passing
-these tests does not establish a proof of correctness.
+terms. The design report and implementation documentation are complete; the PDF
+slides and presentation recording remain pending. Passing tests does not
+establish a proof of correctness.
 
 The assignment is authoritative: [Assign06.md](../Assign06.md).
 [REQUIREMENTS.md](../REQUIREMENTS.md) provides the detailed requirement IDs.
+[DESIGN.md](DESIGN.md) explains the representations, translation rules,
+correctness argument, and tradeoffs in a short report. This README provides
+commands, interfaces, worked examples, and measured results.
+[AI-TRANSCRIPT.md](AI-TRANSCRIPT.md) records AI assistance and verification.
 
 ## Setup and tests
 
@@ -30,42 +35,33 @@ python -B -m MySolution.demo
 `-B` prevents bytecode-cache writes, including beside the supplied Assignment 5
 file. The package also ignores local bytecode caches and virtual environments.
 
-Step 1 verification on Python 3.14.7: all **4 setup tests passed**. The source-AST
-example below produced the documented output, and the supplied file's SHA-256
-hash was unchanged before and after this milestone.
-
-Step 2 verification on Python 3.14.7: all **27 tests passed** (4 setup and 23 target
-operation tests, several with additional subcases).
-
-Step 3 verification on Python 3.14.7: all **46 tests passed**, including 19 new
-target-evaluation tests.
-
-Step 4 verification on Python 3.14.7: all **84 tests passed**, including 38 new
-source and engine-boundary tests. Source factorial of 4 returns 24 and Fibonacci
-of 5 returns 5. All existing target budget/count tests still pass.
-
-Step 5 verification on Python 3.14.7: all **112 tests passed**, including 8 basic
-encoding tests and 20 scalar-observation tests. Existing suites remain unchanged.
-
-Step 6 verification on Python 3.14.7: all **147 tests passed**, adding 21 encoded
-operation tests and 14 pair-observation tests. All previous tests still pass.
-
-Step 7 verification on Python 3.14.7: all **181 tests passed**, adding 29 compiler
-tests and 5 source-helper tests. Existing suites remain unchanged.
-
-Step 8 verification on Python 3.14.7: all **198 tests passed**, adding 17 recursive
-compiler tests and extending library checks to Z. Compiled factorial of 4 returns
-24 and Fibonacci of 5 returns 5, matching source evaluation. Fix-based LOOP
-exhausts its target budget; skipped loops complete. No divergent source is run.
-
-Step 9 verification on Python 3.14.7: all **213 tests passed**, including 15 new
-demonstration tests. The documented default demo command completed with
-`Summary: 14/14 demonstrations passed.` and saved all 14 fully expanded terms.
+Verified on **Python 3.14.7**: all **213 tests pass**, and the default demo command
+reports `Summary: 14/14 demonstrations passed.` with all 14 fully expanded terms
+saved. Python 3.12 is the required minimum; other interpreter versions have not
+been tested in this workspace. Milestone history is recorded in AI-TRANSCRIPT.md.
 
 The adapter requires the repository's existing `assigns/05/lambda1_vp.py` in
 its original relative location. It loads that exact file by location without
 changing the module search path or modifying the supplied code. All solution
-modules will access its classes through `MySolution.source_ast.ast`.
+modules access its classes through `MySolution.source_ast.ast`. Run from the
+repository checkout: copying MySolution alone omits this required supplied file.
+
+## Main interfaces
+
+| Import/module | Call | Result |
+| --- | --- | --- |
+| `source_ast` | `ast.D0E...(...)` | Supplied source syntax; constructors are used instead of a parser |
+| `source_ops` | `pretty_source(source)` | Readable source syntax |
+| `compiler` | `compile_expr(source)` | Pure target term; `CompilationError` for unsupported syntax |
+| `evaluator` | `evaluate(source)` | Source value; no target count or finite budget |
+| `evaluator` | `evaluate(target, max_steps=N)` | Completed lambda or exhausted residual, with execution count/budget |
+| `observers` | `observe(value, kind, max_steps=N)` | Decoded data or exhausted/malformed outcome, with separate count/budget |
+| `target` | `pretty(term)`, `free_vars(term)`, `substitute(term, name, replacement)` | Printed syntax, free names, or a new term |
+
+Pass an observer kind of `"natural"`, `"boolean"`, or
+`("pair", left_kind, right_kind)`, nesting pair kinds as needed. Observe only a
+completed target value. Detailed status fields, errors, and worked examples
+appear below.
 
 ## Source-AST example
 
@@ -153,8 +149,8 @@ evaluates or recursively substitutes into an inserted replacement. Structural
 operations do traverse lambda bodies; that is distinct from evaluating them.
 
 These structural helpers use recursive tree traversal. Extremely deeply nested
-terms can reach Python's recursion limit; this milestone does not implement a
-stack-independent traversal or an evaluator. Constructor child shapes are assumed
+terms can reach Python's recursion limit; these helpers do not implement
+stack-independent traversal. Constructor child shapes are assumed
 valid; the module is not a general AST validator.
 
 ## Target evaluation
@@ -245,8 +241,8 @@ Call `evaluate(source_expression)` without `max_steps`. It returns the same
 `value` referring to a source value. `steps` and `budget` are `None`: source
 execution does not claim zero target steps or provide a finite execution limit.
 Passing a non-None source budget raises `TypeError` rather than silently ignoring
-it. Use source evaluation only for terminating examples; divergent examples will
-be compiled and run with a target budget.
+it. Use source evaluation only for terminating examples; divergent examples
+are compiled and run with a target budget.
 
 The source values reuse the supplied record classes:
 
@@ -307,7 +303,7 @@ arguments, let initializers, arithmetic/comparison operands, and both pair
 components are strict and evaluated left to right. Subtraction truncates at zero,
 and `D0Eif0` requires a boolean condition, regardless of its constructor name.
 
-### Source errors and current boundaries
+### Source errors and supported inputs
 
 `SourceEvaluationError` (a `ValueError` subclass) reports an unbound source name,
 a reached negative literal or unsupported operator, or a basic misuse such as
@@ -500,7 +496,8 @@ After n updates, current represents n and previous represents `max(n - 1, 0)`.
 Selecting previous therefore gives predecessor; zero performs no updates and
 still returns zero. Repeating predecessor implements truncated subtraction.
 Consequently `m <= n` holds exactly when `SUB m n` is zero. Equality requires
-both directions of that relation. This explanation will also inform DESIGN.md.
+both directions of that relation. [DESIGN.md](DESIGN.md) includes the construction
+and its invariant in the correctness argument.
 
 ### Pair observation and aggregate budget
 
@@ -566,7 +563,7 @@ completed 14
 
 ### High-level purpose and entry point
 
-This milestone connects the existing pieces into a compiler pipeline. Instead of
+The compiler connects the components into a pipeline. Instead of
 manually assembling target applications, pass a source AST to
 `compile_expr(source_expression)` and obtain a pure target term. Compilation
 does not calculate source answers, invoke an evaluator, or mutate its input.
@@ -743,7 +740,7 @@ These counts use the current fully expanded terms and separate budgets of
 not complexity bounds. The demo and recursive/source tests share the factorial,
 Fibonacci, and LOOP constructors in `examples.py`; explicit answers independently
 check the source and compiled results. These constructors were moved from the
-source tests in Step 9 so the executable demonstration never depends on tests.
+source tests so the executable demonstration never depends on tests.
 
 ### Coverage and diagnostics
 
@@ -784,7 +781,7 @@ diverging source evaluation is run.
 | Demonstrations | `demo.py` | Run and report the required end-to-end examples; save pure terms | All 14 pass with default budgets |
 | Tests | `tests/` | Component, compiler pipeline, and demonstration acceptance tests | All 213 pass |
 
-The intended pipeline is:
+The runtime pipeline is:
 
 ```text
 Source AST --------------------> shared evaluator ----> source result
@@ -816,7 +813,7 @@ separate from program execution.
 The measured demo defaults are **10,000 execution steps** and **10,000 observation
 steps per example**, independently configurable. These cover all terminating
 required examples: the largest execution count is 1,794 (Fibonacci 5), and the
-largest observation count is 333 (factorial 4). Step 8's standalone factorial
+largest observation count is 333 (factorial 4). The standalone factorial
 example above retains its explicitly configured 100,000-step budgets. Neither
 choice imposes a universal bound on arbitrary programs or their running time.
 Compilation supports open expressions. Target execution requires closed
@@ -903,17 +900,48 @@ observations, false/integer confusion, invalid arguments, output-file errors,
 and continuing the collection after failed expectations. Temporary test folders
 stay inside the solution and are removed after each test.
 
-## Deliverables still pending
+## Limitations
 
-`DESIGN.md`, PDF presentation slides, and the 15–20 minute face-visible recording
-are pending. Their actual files or recording link will be identified here when
-they exist. A parser, web interface, and static type checker are outside the
-required implementation.
+- Compilation and substitution support open terms; target execution rejects
+  them with `OpenTermError`. The correctness claim covers closed, well-typed
+  source programs returning natural, boolean, or finite data-pair results.
+- There is no static type checker. Required unsupported syntax is rejected
+  throughout the source AST, but arbitrary malformed ASTs and ill-typed programs
+  are outside the supported input contract.
+- Target step budgets count contractions, not elapsed time, tree size, or memory.
+  The execution loop is iterative, but printing, compilation, name analysis,
+  substitution, and nested-pair observation contain recursive traversals that
+  can reach Python's recursion limit. Substitution may duplicate large terms.
+- Observation requires a caller-supplied kind and does not recognize every
+  invalid untyped encoding. It reports malformed outputs and budget exhaustion;
+  a partial computation is never a successfully decoded result.
+- Source evaluation is unbounded. The demo's explicitly marked looping examples
+  skip it. The runner is a fixed collection, not a general termination checker.
+- Signed integers, division, a source parser, and a web interface are not
+  implemented. Required source arithmetic uses naturals and truncated subtraction.
+
+## Submission documents and remaining presentation work
+
+| Deliverable | Location/status |
+| --- | --- |
+| Source and automated tests | Python modules and `tests/` in this directory |
+| Setup, demo command, interfaces, results, limitations, attribution | This README |
+| Design report, all translation rules, predecessor, correctness, tradeoffs | [DESIGN.md](DESIGN.md) |
+| AI assistance, important requests, verification record | [AI-TRANSCRIPT.md](AI-TRANSCRIPT.md) |
+| PDF presentation slides | Pending Step 11; no slide PDF has been submitted yet |
+| Actual 15–20 minute presentation recording or accessible link | Pending Step 12; no recording has been submitted yet |
+
+The assignment submission is not complete until the PDF slides and actual
+recording are supplied and identified here. The recording must show the
+presenter's face and readable slides, include audible narration and a recursive
+example, and be accessible to the instructor without another permission request.
+The final submission excludes virtual environments, installed dependencies,
+caches, and temporary test folders. Demo term files can be regenerated.
 
 ## Attribution
 
 Source AST classes and the visitor interface come from the instructor-supplied
-Assignment 5 `lambda1_vp.py`, used unchanged. Its existing free-variable visitor
+Assignment 5 [lambda1_vp.py](../../05/lambda1_vp.py), used unchanged. Its existing free-variable visitor
 is used in setup tests. Its value/environment records and closure representation
 are reused in the shared evaluator, and its defining-environment application
 approach informs the source cases. Its interpreter is not called: source
@@ -921,20 +949,20 @@ evaluation is implemented in the same continuation loop as target execution,
 with Assignment 6's operator semantics.
 
 The `FreshNameGenerator` policy and scoped binder-renaming approach in `target.py`
-adapt the student's Assignment 5 `MySolution/operations.py`. The target nodes,
+adapt the student's Assignment 5 [operations.py](../../05/MySolution/operations.py). The target nodes,
 operations, and alpha-equivalence checker are implemented separately for this
-assignment. No external Church-encoding implementation has been used yet.
+assignment. No external Church-encoding implementation was used.
 
 The source printer and all-name traversal in `source_ops.py` adapt the student's
-Assignment 5 `MySolution/operations.py`, with Assignment 6-specific validation
+Assignment 5 [operations.py](../../05/MySolution/operations.py), with Assignment 6-specific validation
 added. The compiler's visitor dispatch follows the supplied interface and the
-local October 6 visitor slides. Translation and delayed-branch rules follow
+local [October 6 visitor slides](../../../lectures/lecture-10-06/slides/lambda1_vp.tex). Translation and delayed-branch rules follow
 Assignment 6 Task 3, using the existing encoding builders.
 
 The initial Church representations follow Assignment 6 Task 2, and the natural
 observation context follows Task 4. The repetition explanation also follows the
 local September 3 lecture's Church-numeral slides
-(`lectures/lecture-09-03/slides/lambda_calculus_slides.tex`). Boolean observation
+([September 3 slide source](../../../lectures/lecture-09-03/slides/lambda_calculus_slides.tex)). Boolean observation
 uses the distinct closed-marker approach permitted by the assignment.
 
 The pair-state predecessor and derived operation definitions are constructed

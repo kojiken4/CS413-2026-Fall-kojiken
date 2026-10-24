@@ -5,11 +5,12 @@
 OpenAI Codex assisted with assignment interpretation, planning, the objectives
 reference, setup, target operations, shared source/target evaluation, basic Church
 encodings, scalar/nested-pair observers, visitor compilation including CBV recursion,
-and the executable 14-case demonstration collection.
+the executable 14-case demonstration collection, and the design report and final
+implementation documentation.
 It used local file inspection, patch editing,
 Git status/diff inspection, and Python's standard-library unittest runner.
 The compiler, encodings, evaluator, observers, and demonstrations are implemented.
-Final design/presentation/recording deliverables remain pending.
+The design report is complete; presentation slides and the actual recording remain pending.
 
 ## Important requests and decisions
 
@@ -43,6 +44,9 @@ Final design/presentation/recording deliverables remain pending.
 11. **Step 9:** Continue with one command for all required demonstrations, separate
     budget/status reporting, generated-term files, source/target comparisons,
     automated acceptance checks, documentation, and a manual commit checkpoint.
+12. **Step 10:** Write the required design report and finalize implementation
+    documentation, verify claims and commands against the current code, and
+    pause before slides and recording work.
 
 Codex proposed loading the supplied Assignment 5 module by its exact relative
 location under a distinct module name. This avoids changing the search path or
@@ -318,3 +322,45 @@ the supplied Assignment 5 file retained its SHA-256 hash.
 
 Step 9 awaits student review. No staging or commits were performed. Final
 DESIGN.md, presentation slides, and the actual recording remain later milestones.
+
+## Step 10 decisions and verification
+
+The student requested Step 10, retaining clear teaching, the high-level purpose,
+and a manual review/commit checkpoint. Codex compared the implementation with
+Assign06's design/submission instructions and REQUIREMENTS DOC-01 through DOC-03,
+QLT-04, and SUB-02. It inspected compiler rules, encoded operations, source scope,
+evaluation outcomes, observer contexts, and existing documentation before writing
+the report. The scope was documentation only; no runtime or test behavior changed.
+
+`DESIGN.md` now explains architecture and interfaces, all source translation rules,
+every required encoding, the pair-state predecessor invariant, deterministic
+naming, scope, weak CBV evaluation, delayed control flow and recursion, bounded
+observation, a correctness argument, testing evidence, and design tradeoffs.
+The intended correctness claim is limited to closed, well-typed source programs
+producing natural, boolean, or finite data-pair results with sufficient resources.
+It distinguishes behavioral preservation from identical syntax or step counts,
+and testing evidence from a universal proof. References credit supplied assignment
+rules and the student's reused Assignment 5 operations; no external encoding
+implementation was used.
+
+The README now presents current verified results instead of historical milestone
+test totals. It links the report and assistance record, summarizes public calls,
+retains worked learning examples, consolidates implementation limitations, and
+identifies actual completed documents and the remaining presentation deliverables.
+An outdated early note saying no evaluator was implemented was corrected.
+The report and README distinguish Python 3.12 as the required minimum from
+Python 3.14.7 as the interpreter actually tested. PDF slides and the actual
+recording are explicitly still pending; no placeholder is presented as submitted.
+
+Verification reran the documented verbose unittest command from `assigns/06/`:
+all **213 tests passed**. Both the default demo command and the explicit-budget/
+output-folder variant reported **14/14 demonstrations passed**; `--help` and
+the Python version command also succeeded. All eight README Python examples
+matched their stated output, and all 14 result-table counts matched current
+execution/observation measurements. Local documentation/source-reference links,
+report word range, whitespace, and the unchanged supplied-source hash were checked.
+The final report has approximately 1,175 prose words, excluding headings,
+translation/encoding rules, and diagrams, within the requested 1,000–1,500 range.
+
+Step 10 awaits student review. No staging or commits were performed. Step 11
+prepares the PDF slides; Step 12 requires the real presentation recording.
