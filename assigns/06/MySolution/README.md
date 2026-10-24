@@ -2,16 +2,17 @@
 
 ## Current status
 
-Steps 1–6 provide the Python package, source-AST adapter, immutable target terms,
+Steps 1–7 provide the Python package, source-AST adapter, immutable target terms,
 printing, name analysis, deterministic fresh names, capture-avoiding substitution,
 alpha-equivalence checking, and one shared evaluator for source and target
 programs. Church data, arithmetic, comparisons, boolean operations, pairs, and
-bounded scalar/nested-pair observation are implemented. Z, compilation, and the
-demo are still pending. Passing these tests does not establish compiler correctness.
+bounded scalar/nested-pair observation are implemented. Nonrecursive visitor
+compilation now connects source ASTs to target execution and observation, including
+delayed conditionals and short-circuit booleans. Z, fix compilation, and the demo
+remain pending. Passing these tests does not establish a proof of correctness.
 
 The assignment is authoritative: [Assign06.md](../Assign06.md).
-See [OBJECTIVES.md](OBJECTIVES.md) for the component overview and
-[CHECKLIST.md](CHECKLIST.md) for planned verification and milestone tracking.
+[REQUIREMENTS.md](../REQUIREMENTS.md) provides the detailed requirement IDs.
 
 ## Setup and tests
 
@@ -46,6 +47,9 @@ encoding tests and 20 scalar-observation tests. Existing suites remain unchanged
 Step 6 verification on Python 3.14.7: all **147 tests passed**, adding 21 encoded
 operation tests and 14 pair-observation tests. All previous tests still pass.
 
+Step 7 verification on Python 3.14.7: all **181 tests passed**, adding 29 compiler
+tests and 5 source-helper tests. Existing suites remain unchanged.
+
 The adapter requires the repository's existing `assigns/05/lambda1_vp.py` in
 its original relative location. It loads that exact file by location without
 changing the module search path or modifying the supplied code. All solution
@@ -69,8 +73,8 @@ D0Eop2(name='+', arg1=D0Eint(arg1=2), arg2=D0Eint(arg1=3))
 ```
 
 This constructs syntax for `2 + 3`; it does not execute the program. The output
-is the supplied dataclass representation; the target printer handles target
-terms, and a source printer is still planned.
+is the supplied dataclass representation. `pretty_source` now prints source
+syntax for demonstrations; `target.pretty` prints the generated target syntax.
 
 ## Target terms and operations
 
@@ -206,16 +210,15 @@ Expected output:
   listing those names in sorted order. This restriction also applies to a lambda
   with free variables in its body, even though that body would not execute yet.
 - Structural operations and substitution still accept open terms. The closed-term
-  restriction applies only to execution, and the future compiler must support
-  open expressions too.
+  restriction applies only to execution; the compiler supports open expressions too.
 
 ## Source evaluation
 
 ### High-level purpose
 
-Source execution establishes a baseline for checking the future compiler. Run
-an original program with the shared engine, then later run and observe its
-compiled target term. Both results must agree with the explicit expected answer.
+Source execution establishes a baseline for checking the compiler. Run an
+original program with the shared engine, then run and observe its compiled target
+term. Both results must agree with the explicit expected answer.
 The compiler itself must never obtain an answer by running source code.
 
 The engine implements every required source constructor and operator. Source
@@ -301,8 +304,8 @@ arbitrary ill-typed program behavior. A free name in an uncalled source function
 body is not looked up until that body executes.
 
 Evaluation follows control flow and does not inspect skipped branches or uncalled
-bodies for unsupported forms. Whole-AST rejection, including unused code, belongs
-to the compiler milestone. The original source AST is preserved during execution;
+bodies for unsupported forms. The compiler checks the whole AST, including unused
+code, before translating it. The original source AST is preserved during execution;
 the supplied source value records themselves remain the instructor's record types.
 
 ## Basic Church values and observation
@@ -428,10 +431,10 @@ during observation. Pair observation extends this mechanism as described below.
 
 ### High-level purpose
 
-The compiler will assemble translated programs from these closed operation
+The compiler assembles translated programs from these closed operation
 builders. They give pure lambda programs arithmetic, comparisons, and structured
-data while keeping the evaluator independent of those meanings. Compiler
-translation itself remains for the next milestones.
+data while keeping the evaluator independent of those meanings. Recursive
+translation remains for Step 8.
 
 All operation builders accept the same optional `names=` generator. The following
 notation abbreviates expanded pure ASTs; each multi-parameter expression is
@@ -461,8 +464,8 @@ engine, not Python arithmetic on decoded operands.
 
 The library AND/OR combinators take evaluated boolean arguments under ordinary
 call-by-value. Passing a divergent expression as an argument still exhausts the
-execution budget. The compiler must preserve source short-circuiting by delaying
-computations with thunks in Step 7; it cannot simply apply these builders to an
+execution budget. The compiler preserves source short-circuiting by delaying
+computations with thunks; it does not apply these builders directly to an
 unwrapped right-hand source computation.
 
 ### Predecessor construction
@@ -547,19 +550,151 @@ completed 14
 4 ((2, True), 3) 27
 ```
 
+## Nonrecursive compilation
+
+### High-level purpose and entry point
+
+This milestone connects the existing pieces into a compiler pipeline. Instead of
+manually assembling target applications, pass a source AST to
+`compile_expr(source_expression)` and obtain a pure target term. Compilation
+does not calculate source answers, invoke an evaluator, or mutate its input.
+
+`compiler.py` uses the supplied `D0ExpVisitor` interface. Each source node's
+`accept` method dispatches to the matching compiler visitor method, which
+translates its children and combines their results. That is compositional
+translation: a program's output is assembled from its subprograms' translations.
+There are no retained source primitives or unresolved library abbreviations.
+
+### Full syntax checks and deterministic naming
+
+Before translation, `source_ops.validate_source` visits every source node,
+rejecting negative literals, unsupported operator spellings, and invalid
+identifiers. It returns all variable and binder names, including unused binders.
+It inspects both conditional branches and all function bodies without executing
+them. Therefore unsupported code fails compilation even when it would not run.
+
+The compiler seeds a new `FreshNameGenerator` with that complete name set and
+shares it across every encoding builder and introduced thunk binder. Source
+binders retain their names; generated binders avoid all original names and all
+previous generated names. Repeated calls produce the same target AST regardless
+of earlier compilations. Open terms compile and preserve their free-variable sets;
+execution remains restricted to closed target terms.
+
+`source_ops.pretty_source` renders syntax for inspection, including unsupported
+forms for diagnostics. Printing and validation are separate read-only visitors.
+
+### Thunks and forcing
+
+A thunk is a function wrapping a computation to delay it. Since a lambda is a
+value under weak call-by-value, creating `lam u. C[branch]` does not execute the
+branch. The fresh parameter u is deliberately unused.
+
+The compiler expands this helper notation into ordinary target terms:
+
+```text
+D(c, t, f) = (c (lam u. t) (lam v. f)) I
+I = lam w. w
+```
+
+The Church boolean c selects one branch lambda. Applying that selected lambda to
+the closed dummy value I forces its body; the other lambda body stays untouched.
+Only evaluation is delayed: both branches were checked and translated during
+compilation. This preserves target call-by-value application rather than changing
+the evaluator's strategy.
+
+### Implemented translation rules
+
+`C[e]` means the translation of e. Capitalized encodings and D are explanatory
+abbreviations that are fully expanded into Var/Lam/App nodes in actual output.
+
+| Source | Target rule |
+| --- | --- |
+| Natural n | `NUM(n)` |
+| Boolean b | `TRUE` or `FALSE` |
+| Variable x | `x` |
+| `lam x. e` | `lam x. C[e]` |
+| `e1 e2` | `C[e1] C[e2]` |
+| `let x = init in body` | `(lam x. C[body]) C[init]` |
+| `not e` | `NOT C[e]` |
+| Numeric `e1 op e2` | `OP C[e1] C[e2]`, with the corresponding arithmetic/comparison builder |
+| `if c then t else f` | `D(C[c], C[t], C[f])` |
+| `e1 and e2` | `D(C[e1], C[e2], FALSE)` |
+| `e1 or e2` | `D(C[e1], TRUE, C[e2])` |
+| `pair e1 e2` | `PAIR C[e1] C[e2]` |
+| `fst e`, `snd e` | `FST C[e]`, `SND C[e]` |
+
+The let initializer is outside its name's binding, as required. Application,
+arithmetic, and pair construction retain left-to-right strictness through their
+target application structure. Generated thunk parameters are fresh and unused,
+so they cannot capture a source free variable. Valid unused branches remain in
+the output, preserving `FV(C[e]) = FV(e)` even for constant conditions.
+
+### Pipeline example
+
+From `assigns/06/`, in `python -B`:
+
+```python
+from MySolution.compiler import compile_expr
+from MySolution.evaluator import evaluate
+from MySolution.observers import observe
+from MySolution.source_ast import ast
+from MySolution.source_ops import pretty_source
+
+source = ast.D0Elet("x", ast.D0Eint(3), ast.D0Eapp(
+    ast.D0Elam("y", ast.D0Eop2("+", ast.D0Evar("x"), ast.D0Evar("y"))), ast.D0Eint(4)
+))
+target = compile_expr(source)
+execution = evaluate(target, max_steps=100)
+observation = observe(execution.value, "natural", max_steps=1000)
+print(pretty_source(source))
+print(evaluate(source).value.arg1, observation.value)
+```
+
+Expected output:
+
+```text
+(let x = 3 in ((lam y. (x + y)) 4))
+7 7
+```
+
+### Coverage and interim boundary
+
+`CompilationError` is importable from `compiler.py`. In Step 7, any source fix
+expression raises an explicit error that recursive translation is added in Step 8,
+including an unused fix expression. Validation still inspects fix bodies first,
+so unsupported literals/operators there are diagnosed. This intermediate boundary
+does not satisfy the final assignment's recursion requirement yet.
+
+| Requirements | Current evidence |
+| --- | --- |
+| CMP-01, CMP-08 | Every nonrecursive constructor/operator; source and observed target results checked against explicit answers; fix translation pending |
+| CMP-02 | Visitor translation is compositional; arithmetic and nonrecursive self-application compile with evaluator entry points disabled |
+| CMP-03 | Tests traverse output and require only exact Var/Lam/App node types; closed source examples produce closed terms |
+| CMP-04, CMP-05 | Let-initializer scope, nested shadowing, lexical functions, open forms, and free-variable equality; fix binding tests pending |
+| CMP-06 | Deterministic repeated compilation, source snapshots, common encoding names, fresh thunk parameters against free and unused bound names |
+| CMP-07 | Negative/unsupported forms rejected in direct input, skipped branches, unapplied functions, short-circuit operands, and fix bodies |
+| QLT-01, QLT-02 | Supplied visitor dispatch verified; compiler imports neither evaluator nor observers; existing engine/encoding/observer modules unchanged |
+
+`tests/test_compiler.py` supplies 29 tests and `tests/test_source_ops.py` supplies
+5. Before fix translation is available, divergence stress tests use nonrecursive
+self-application built from lambdas and applications. They check both skipped
+computations and selected/strict computations under target budgets. The required
+fix-based LOOP, factorial, and Fibonacci compilation tests remain for Step 8.
+No directly diverging source evaluation is run.
+
 ## Architecture
 
 | Component | Module | Responsibility | Status |
 | --- | --- | --- | --- |
 | Source integration | `source_ast.py` | Load the supplied AST and visitor interface once | Implemented |
-| Source helpers | `source_ops.py` | Printing and source name analysis | Planned |
+| Source helpers | `source_ops.py` | Source printing, full syntax validation, all-name collection | Implemented |
 | Target terms and operations | `target.py` | Immutable `Var`, `Lam`, `App`; printing, names, substitution, alpha-equivalence | Implemented |
 | Shared evaluator | `evaluator.py` | Execute source and target syntax through one engine | Implemented |
 | Church encodings | `encodings.py` | Construct closed pure terms for data and operations | All required data/operations implemented; Z pending |
-| Compiler | `compiler.py` | Translate using `D0ExpVisitor`; never evaluate input | Planned |
+| Compiler | `compiler.py` | Translate using `D0ExpVisitor`; never evaluate input | Nonrecursive forms implemented; fix pending |
 | Observers | `observers.py` | Decode expected data kinds through bounded target contexts | Natural, boolean, and nested pairs implemented |
 | Demonstrations | `demo.py` | Run and report the required end-to-end examples | Planned |
-| Tests | `tests/` | Setup, target operations, evaluation, encoded operations, scalar/pair observation | In progress |
+| Tests | `tests/` | Existing component tests plus source helpers and nonrecursive compiler pipeline | In progress |
 
 The intended pipeline is:
 
@@ -577,9 +712,10 @@ For terminating examples, compare source and decoded target results against
 explicit expected answers. Divergent examples will run only through bounded
 target execution, avoiding an unbounded source evaluation.
 
-The compiler will depend on source/target syntax and encoding builders, not on
-the evaluator. The evaluator will not import or invoke the compiler. Observers
-will build pure target contexts and use the same evaluator.
+The compiler depends on source/target syntax, validation helpers, and encoding
+builders. It imports neither evaluator nor observers. The evaluator does not
+import or invoke the compiler. Observers build pure target contexts and use the
+same evaluator.
 
 ## Execution and observation budgets
 
@@ -592,13 +728,13 @@ separate from program execution.
 The initial planned demo defaults are 100,000 execution steps and 100,000
 observation steps per example. These are not measured requirements or verified
 sufficient budgets yet; finalize them after running the terminating examples.
-Compilation will support open expressions. Target execution requires closed
+Compilation supports open expressions. Target execution requires closed
 terms and reports open inputs clearly.
 
 ## Commands and deliverables still pending
 
 The planned demo command is `python -B -m MySolution.demo`. It is **not available
-in Step 6**. A later milestone will add its exact options and output details.
+in Step 7**. A later milestone will add its exact options and output details.
 
 `DESIGN.md`, PDF presentation slides, and the 15–20 minute face-visible recording
 are pending. Their actual files or recording link will be identified here when
@@ -619,6 +755,12 @@ The `FreshNameGenerator` policy and scoped binder-renaming approach in `target.p
 adapt the student's Assignment 5 `MySolution/operations.py`. The target nodes,
 operations, and alpha-equivalence checker are implemented separately for this
 assignment. No external Church-encoding implementation has been used yet.
+
+The source printer and all-name traversal in `source_ops.py` adapt the student's
+Assignment 5 `MySolution/operations.py`, with Assignment 6-specific validation
+added. The compiler's visitor dispatch follows the supplied interface and the
+local October 6 visitor slides. Translation and delayed-branch rules follow
+Assignment 6 Task 3, using the existing encoding builders.
 
 The initial Church representations follow Assignment 6 Task 2, and the natural
 observation context follows Task 4. The repetition explanation also follows the

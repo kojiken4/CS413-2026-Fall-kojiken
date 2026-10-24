@@ -4,9 +4,10 @@
 
 OpenAI Codex assisted with assignment interpretation, planning, the objectives
 reference, setup, target operations, shared source/target evaluation, basic Church
-encodings, and scalar observers. It used local file inspection, patch editing,
+encodings, scalar/nested-pair observers, and nonrecursive visitor compilation.
+It used local file inspection, patch editing,
 Git status/diff inspection, and Python's standard-library unittest runner.
-Compilation, encoded operations, pairs, Z, and demonstrations remain pending.
+Z, fix compilation, and demonstrations remain pending.
 
 ## Important requests and decisions
 
@@ -31,6 +32,9 @@ Compilation, encoded operations, pairs, Z, and demonstrations remain pending.
    Keep the established explain/implement/verify/commit-message/review workflow.
 8. **Step 5:** Add basic Church values and bounded scalar observation with tests
    and documentation, then stop at the review/commit checkpoint.
+9. **Step 7:** Connect source ASTs to the existing target pipeline with a
+   nonrecursive visitor compiler, delayed control flow, full syntax checks,
+   tests, documentation, and a pause at the review/commit checkpoint.
 
 Codex proposed loading the supplied Assignment 5 module by its exact relative
 location under a distinct module name. This avoids changing the search path or
@@ -176,3 +180,38 @@ literal/computed/renamed values, zero/false ambiguity, malformed shapes, separat
 budgets/counts, exact boundaries, diverging observations, input preservation,
 and pure contexts executed through a spied shared evaluator. Pair support and
 encoded operations remain for the next milestone. Step 5 student review is pending.
+
+## Step 7 decisions and verification
+
+The high-level explanation identified this milestone as the connection between
+source ASTs and the existing pure-target execution/observation pipeline. It
+explained compositional translation and thunks: Church booleans select between
+branch lambdas, then application to I forces only the selected body. Both branches
+are still inspected and translated before runtime. Short-circuit and/or use that
+same delayed selection rather than the strict value-taking boolean combinators.
+
+`source_ops.py` adds read-only printing and a whole-AST validation/name-collection
+visitor. The printer and name traversal adapt Assignment 5 MySolution/operations.py;
+the supplied AST file remains unchanged. Validation rejects unsupported forms
+even in unused code and seeds fresh names against all source identifiers/binders.
+
+`compiler.py` implements the supplied D0ExpVisitor interface and translates all
+nonrecursive forms. It imports syntax, helpers, and encoding builders only, without
+an evaluator or observer. Source binders retain their names, and one call-local
+generator supplies all introduced names. Fix translation is explicitly unavailable
+until Step 8; its body is still checked for unsupported syntax before that stage
+error. The README records current translation rules, requirement-to-test notes,
+limitations, and a working pipeline example. Optional objectives/checklist files
+were absent when this step began; they were not recreated, and broken README
+links to them were removed.
+
+All **181 tests passed** on Python 3.14.7: the previous 147 plus 29 compiler and
+5 source-helper tests. Terminating examples compare source evaluation and observed
+compiled results with explicit expected answers. Tests cover all nonrecursive
+forms/operators, scope, open terms, deterministic output, input preservation,
+pure target nodes, visitor dispatch, and compile-time rejection in unused code.
+Failing evaluator test doubles verify compilation does not execute programs.
+Nonrecursive self-application fixtures check skipped divergence and strict/selected
+divergence before fix-based LOOP is available. No directly diverging source
+evaluation was run. The evaluator, encoding, and observer modules were unchanged.
+Step 7 student review is pending; no automatic staging or commits occurred.
