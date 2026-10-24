@@ -3,10 +3,10 @@
 ## Tools and scope
 
 OpenAI Codex assisted with assignment interpretation, planning, the objectives
-reference, setup, target operations, and shared source/target evaluation. It used local
-file inspection, patch editing, Git status/diff inspection, and Python's
-standard-library unittest runner. Compilation, encodings, and observers remain
-pending.
+reference, setup, target operations, shared source/target evaluation, basic Church
+encodings, and scalar observers. It used local file inspection, patch editing,
+Git status/diff inspection, and Python's standard-library unittest runner.
+Compilation, encoded operations, pairs, Z, and demonstrations remain pending.
 
 ## Important requests and decisions
 
@@ -29,6 +29,8 @@ pending.
 7. **Step 4:** Proceed to source evaluation and, from now on, also explain each
    milestone's overarching purpose and how it contributes to the whole assignment.
    Keep the established explain/implement/verify/commit-message/review workflow.
+8. **Step 5:** Add basic Church values and bounded scalar observation with tests
+   and documentation, then stop at the review/commit checkpoint.
 
 Codex proposed loading the supplied Assignment 5 module by its exact relative
 location under a distinct module name. This avoids changing the search path or
@@ -142,5 +144,35 @@ recursive closures, coincident binders, factorial, Fibonacci, skipped divergence
 strict evaluation via finite error probes, input preservation, independent calls,
 and a terminating 2,000-call countdown. Test doubles verify no delegation to the
 supplied interpreter, no source calls to target substitution, and no target calls
-to source arithmetic. No directly diverging source evaluation was run. Step 4
-student review is pending.
+to source arithmetic. No directly diverging source evaluation was run. The
+student subsequently requested Step 5; no line-by-line review is inferred.
+
+## Step 5 decisions and verification
+
+The high-level explanation identified encoding/observation as the bridge between
+pure function results and readable data. It introduced Church naturals as
+repetition, booleans as selection, and observation contexts as pure target
+applications that expose data through the existing engine. It explained why
+weakly returned lambdas can still need computation during observation and why
+zero and false require an explicit expected kind.
+
+Codex implemented numeral, boolean, and identity builders in `encodings.py`,
+using the existing deterministic fresh-name generator. Representations follow
+Assignment 6 Task 2. The natural repetition explanation also references the local
+September 3 Church-numeral lecture slides. Literal numeral construction uses a
+Python loop to build AST syntax; no generated arithmetic is executed by builders.
+
+`observers.py` evaluates natural values with the assignment's STEP/BASE context,
+then counts the completed lambda spine structurally. It observes booleans by
+selecting between the distinct closed I and FALSE marker values and comparing
+up to alpha-renaming. Outputs report completed, exhausted, or malformed status,
+with separate observation counts/budgets and no decoded value on failure. No
+evaluator changes or reduction beneath lambdas were added. Complete validation
+of arbitrary untyped functions is explicitly not claimed.
+
+All **112 tests passed** on Python 3.14.7: the previous 84 plus 8 builder and 20
+observer tests. They cover purity/closedness, deterministic shared naming,
+literal/computed/renamed values, zero/false ambiguity, malformed shapes, separate
+budgets/counts, exact boundaries, diverging observations, input preservation,
+and pure contexts executed through a spied shared evaluator. Pair support and
+encoded operations remain for the next milestone. Step 5 student review is pending.

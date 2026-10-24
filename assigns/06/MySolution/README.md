@@ -2,11 +2,12 @@
 
 ## Current status
 
-Steps 1–4 provide the Python package, source-AST adapter, immutable target terms,
+Steps 1–5 provide the Python package, source-AST adapter, immutable target terms,
 printing, name analysis, deterministic fresh names, capture-avoiding substitution,
 alpha-equivalence checking, and one shared evaluator for source and target
-programs. The compiler, encodings, observers, and demo are not implemented yet.
-Passing these tests does not establish compiler correctness.
+programs. Basic Church numerals, booleans, identity, and bounded natural/boolean
+observers are implemented. Encoded operations, pairs, Z, compilation, and the demo
+are still pending. Passing these tests does not establish compiler correctness.
 
 The assignment is authoritative: [Assign06.md](../Assign06.md).
 See [OBJECTIVES.md](OBJECTIVES.md) for the component overview and
@@ -38,6 +39,9 @@ target-evaluation tests.
 Step 4 verification on Python 3.14.7: all **84 tests passed**, including 38 new
 source and engine-boundary tests. Source factorial of 4 returns 24 and Fibonacci
 of 5 returns 5. All existing target budget/count tests still pass.
+
+Step 5 verification on Python 3.14.7: all **112 tests passed**, including 8 basic
+encoding tests and 20 scalar-observation tests. Existing suites remain unchanged.
 
 The adapter requires the repository's existing `assigns/05/lambda1_vp.py` in
 its original relative location. It loads that exact file by location without
@@ -298,6 +302,123 @@ bodies for unsupported forms. Whole-AST rejection, including unused code, belong
 to the compiler milestone. The original source AST is preserved during execution;
 the supplied source value records themselves remain the instructor's record types.
 
+## Basic Church values and observation
+
+### High-level purpose
+
+Pure target execution returns functions, rather than built-in integers or
+booleans. Encodings let those functions represent data; observers expose readable
+answers for comparison with source results. The evaluator itself gains no
+knowledge of Church data and has no new arithmetic shortcuts.
+
+`encodings.py` currently supplies these closed pure-target builders:
+
+| Builder | Representation, up to bound-variable names |
+| --- | --- |
+| `numeral(n)` | `lam s. lam z. s` applied `n` times to `z` |
+| `boolean(True)` | `lam t. lam f. t` |
+| `boolean(False)` | `lam t. lam f. f` |
+| `identity()` | `lam w. w` |
+
+A Church numeral describes repetition. `NUM(2)` is `lam s. lam z. s (s z)`:
+take a step function, then a starting value, then apply the step twice. Multiple
+arguments use nested single-parameter functions. A Church boolean selects the
+first or second supplied argument.
+
+Every builder accepts an optional `names=FreshNameGenerator(...)` so future
+compiler/library assembly can share the deterministic naming policy. Without
+one, each call starts a fresh generator. Numeral construction uses a Python loop
+to build literal syntax, not to execute generated arithmetic. Negative numeral
+literals raise `ValueError`; noninteger literals, including booleans, raise
+`TypeError`. The boolean builder requires an actual Python boolean literal.
+
+### Observer interface
+
+`observe(value, expected_kind, max_steps=...)` takes a completed closed target
+lambda and an explicit `"natural"` or `"boolean"` kind. This annotation is needed
+because Church zero and false are alpha-equivalent; the observer does not guess.
+
+An observation constructs pure target applications and calls the **same shared
+evaluator** with its own budget. Only after that execution completes does Python
+inspect the output shape. It never reduces beneath lambdas or executes generated
+arithmetic while inspecting a result.
+
+| `ObservationResult` field | Meaning |
+| --- | --- |
+| `status` | `"completed"`, `"exhausted"`, or `"malformed"` |
+| `value` | Decoded Python integer/boolean on success; `None` otherwise |
+| `term` | Final observation output, or unfinished observation term |
+| `steps`, `budget` | Observation beta steps and its supplied limit, separate from program execution |
+| `diagnostic` | Explanation for exhaustion/malformed output; `None` on success |
+
+An unknown kind or a non-lambda input is an API error. Budget validation and
+closed-input rejection follow the target evaluator's documented errors. Malformed
+output means the context completed but produced an unrecognized shape; exhaustion
+means it still needed evaluation. Neither exposes a successful decoded value.
+
+### Natural-number context and shape
+
+The context from Assignment 6 evaluates `value STEP BASE`:
+
+```text
+STEP = lam tail. lam c. lam z. c tail
+BASE = lam c. lam z. z
+NODE(tail) = lam c. lam z. c tail
+```
+
+For two, reduction builds `NODE(NODE(BASE))`. Python walks that finite spine and
+counts nodes. It checks each node's local binders rather than requiring fixed
+names; a node's selector and zero binders must differ so the selector occurrence
+really refers to the outer binder. BASE may reuse its binder name, because its
+body refers to the inner binder. Unexpected heads, tails, or base shapes are
+rejected. This is structural inspection of the completed data, not normalization.
+
+### Boolean context and markers
+
+The boolean context evaluates `value TRUE_MARKER FALSE_MARKER`. The true marker
+is `I = lam w. w`; the false marker is `FALSE = lam t. lam f. f`. Both are closed
+values and are not alpha-equivalent. The observer matches the selected marker
+up to bound-variable renaming.
+
+These shape checks are not a universal validity test for arbitrary untyped
+functions. An unusual function producing an accepted spine or marker can decode
+successfully. This limitation is allowed by the assignment.
+
+### Execution and observation example
+
+From `assigns/06/`, in `python -B`:
+
+```python
+from MySolution.encodings import boolean, numeral
+from MySolution.evaluator import evaluate
+from MySolution.observers import observe
+
+execution = evaluate(numeral(2), max_steps=0)
+observation = observe(execution.value, "natural", max_steps=4)
+print(execution.status, execution.steps)
+print(observation.status, observation.value, observation.steps)
+print(observe(boolean(False), "boolean", max_steps=2).value)
+print(observe(numeral(0), "natural", max_steps=2).value)
+print(observe(numeral(0), "boolean", max_steps=2).value)
+```
+
+Expected output:
+
+```text
+completed 0
+completed 2 4
+False
+0
+False
+```
+
+Literal `NUM(n)` takes `n + 2` observation steps with this context; literal
+booleans take two. Computed values can require more because their bodies can
+contain redexes. A completed lambda alone is therefore insufficient for decoding
+by matching its original syntax. Tests exercise both computed natural and boolean
+bodies, successful completion on the exact observation budget, and divergence
+during observation. Pair observation is planned for Step 6.
+
 ## Architecture
 
 | Component | Module | Responsibility | Status |
@@ -306,11 +427,11 @@ the supplied source value records themselves remain the instructor's record type
 | Source helpers | `source_ops.py` | Printing and source name analysis | Planned |
 | Target terms and operations | `target.py` | Immutable `Var`, `Lam`, `App`; printing, names, substitution, alpha-equivalence | Implemented |
 | Shared evaluator | `evaluator.py` | Execute source and target syntax through one engine | Implemented |
-| Church encodings | `encodings.py` | Construct closed pure terms for data and operations | Planned |
+| Church encodings | `encodings.py` | Construct closed pure terms for data and operations | Numerals, booleans, identity implemented; other combinators pending |
 | Compiler | `compiler.py` | Translate using `D0ExpVisitor`; never evaluate input | Planned |
-| Observers | `observers.py` | Decode expected data kinds through bounded target contexts | Planned |
+| Observers | `observers.py` | Decode expected data kinds through bounded target contexts | Natural/boolean implemented; pairs pending |
 | Demonstrations | `demo.py` | Run and report the required end-to-end examples | Planned |
-| Tests | `tests/` | Setup, target operations, both evaluation paths, and engine boundaries | In progress |
+| Tests | `tests/` | Setup, target operations, evaluation, basic encodings, and scalar observation | In progress |
 
 The intended pipeline is:
 
@@ -332,12 +453,13 @@ The compiler will depend on source/target syntax and encoding builders, not on
 the evaluator. The evaluator will not import or invoke the compiler. Observers
 will build pure target contexts and use the same evaluator.
 
-## Execution and planned observation contracts
+## Execution and observation budgets
 
 Target execution uses weak, left-to-right call-by-value reduction and counts
-only beta-value steps. Observation will have its own budget and count, including
-pair projections and recursively observed components. Completion, exhaustion,
-and malformed observations will remain distinguishable.
+only beta-value steps. Scalar observation has its own budget and count, with
+completion, exhaustion, and malformed outputs distinguished. Pair projections
+and recursively observed components will share a separate aggregate observation
+budget when implemented in Step 6.
 
 The initial planned demo defaults are 100,000 execution steps and 100,000
 observation steps per example. These are not measured requirements or verified
@@ -348,7 +470,7 @@ terms and reports open inputs clearly.
 ## Commands and deliverables still pending
 
 The planned demo command is `python -B -m MySolution.demo`. It is **not available
-in Step 4**. A later milestone will add its exact options and output details.
+in Step 5**. A later milestone will add its exact options and output details.
 
 `DESIGN.md`, PDF presentation slides, and the 15–20 minute face-visible recording
 are pending. Their actual files or recording link will be identified here when
@@ -369,5 +491,11 @@ The `FreshNameGenerator` policy and scoped binder-renaming approach in `target.p
 adapt the student's Assignment 5 `MySolution/operations.py`. The target nodes,
 operations, and alpha-equivalence checker are implemented separately for this
 assignment. No external Church-encoding implementation has been used yet.
+
+The initial Church representations follow Assignment 6 Task 2, and the natural
+observation context follows Task 4. The repetition explanation also follows the
+local September 3 lecture's Church-numeral slides
+(`lectures/lecture-09-03/slides/lambda_calculus_slides.tex`). Boolean observation
+uses the distinct closed-marker approach permitted by the assignment.
 
 See [AI-TRANSCRIPT.md](AI-TRANSCRIPT.md) for AI assistance and verification.
