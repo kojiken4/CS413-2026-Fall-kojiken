@@ -2,12 +2,12 @@
 
 ## Current status
 
-Steps 1–5 provide the Python package, source-AST adapter, immutable target terms,
+Steps 1–6 provide the Python package, source-AST adapter, immutable target terms,
 printing, name analysis, deterministic fresh names, capture-avoiding substitution,
 alpha-equivalence checking, and one shared evaluator for source and target
-programs. Basic Church numerals, booleans, identity, and bounded natural/boolean
-observers are implemented. Encoded operations, pairs, Z, compilation, and the demo
-are still pending. Passing these tests does not establish compiler correctness.
+programs. Church data, arithmetic, comparisons, boolean operations, pairs, and
+bounded scalar/nested-pair observation are implemented. Z, compilation, and the
+demo are still pending. Passing these tests does not establish compiler correctness.
 
 The assignment is authoritative: [Assign06.md](../Assign06.md).
 See [OBJECTIVES.md](OBJECTIVES.md) for the component overview and
@@ -42,6 +42,9 @@ of 5 returns 5. All existing target budget/count tests still pass.
 
 Step 5 verification on Python 3.14.7: all **112 tests passed**, including 8 basic
 encoding tests and 20 scalar-observation tests. Existing suites remain unchanged.
+
+Step 6 verification on Python 3.14.7: all **147 tests passed**, adding 21 encoded
+operation tests and 14 pair-observation tests. All previous tests still pass.
 
 The adapter requires the repository's existing `assigns/05/lambda1_vp.py` in
 its original relative location. It loads that exact file by location without
@@ -311,7 +314,7 @@ booleans. Encodings let those functions represent data; observers expose readabl
 answers for comparison with source results. The evaluator itself gains no
 knowledge of Church data and has no new arithmetic shortcuts.
 
-`encodings.py` currently supplies these closed pure-target builders:
+`encodings.py` supplies these basic closed pure-target builders:
 
 | Builder | Representation, up to bound-variable names |
 | --- | --- |
@@ -335,8 +338,10 @@ literals raise `ValueError`; noninteger literals, including booleans, raise
 ### Observer interface
 
 `observe(value, expected_kind, max_steps=...)` takes a completed closed target
-lambda and an explicit `"natural"` or `"boolean"` kind. This annotation is needed
-because Church zero and false are alpha-equivalent; the observer does not guess.
+lambda and an explicit `"natural"`, `"boolean"`, or recursive
+`("pair", left_kind, right_kind)` description. These are Python metadata, not
+additional target AST forms. The annotation is needed because Church zero and
+false are alpha-equivalent; the observer does not guess.
 
 An observation constructs pure target applications and calls the **same shared
 evaluator** with its own budget. Only after that execution completes does Python
@@ -346,8 +351,8 @@ arithmetic while inspecting a result.
 | `ObservationResult` field | Meaning |
 | --- | --- |
 | `status` | `"completed"`, `"exhausted"`, or `"malformed"` |
-| `value` | Decoded Python integer/boolean on success; `None` otherwise |
-| `term` | Final observation output, or unfinished observation term |
+| `value` | Decoded Python integer/boolean or recursively nested tuple on success; `None` otherwise |
+| `term` | Scalar output on scalar success; original pair value on pair success; failing context output/residual on failure |
 | `steps`, `budget` | Observation beta steps and its supplied limit, separate from program execution |
 | `diagnostic` | Explanation for exhaustion/malformed output; `None` on success |
 
@@ -417,7 +422,130 @@ booleans take two. Computed values can require more because their bodies can
 contain redexes. A completed lambda alone is therefore insufficient for decoding
 by matching its original syntax. Tests exercise both computed natural and boolean
 bodies, successful completion on the exact observation budget, and divergence
-during observation. Pair observation is planned for Step 6.
+during observation. Pair observation extends this mechanism as described below.
+
+## Encoded operations and pairs
+
+### High-level purpose
+
+The compiler will assemble translated programs from these closed operation
+builders. They give pure lambda programs arithmetic, comparisons, and structured
+data while keeping the evaluator independent of those meanings. Compiler
+translation itself remains for the next milestones.
+
+All operation builders accept the same optional `names=` generator. The following
+notation abbreviates expanded pure ASTs; each multi-parameter expression is
+implemented with nested single-parameter lambdas.
+
+| Builder | Encoded rule or behavior |
+| --- | --- |
+| `pair()` | `PAIR a b p = p a b` |
+| `first()`, `second()` | `FST p = p TRUE`; `SND p = p FALSE` |
+| `successor()` | `SUCC n s z = s (n s z)` |
+| `predecessor()` | Iterate a pair of previous/current counts; select previous |
+| `is_zero()` | `ISZERO n = n (lam ignored. FALSE) TRUE` |
+| `add()` | `ADD m n s z = m s (n s z)` |
+| `subtract()` | `SUB m n = n PRED m` |
+| `multiply()` | `MUL m n s z = m (n s) z` |
+| `negation()` | `NOT p = p FALSE TRUE` |
+| `conjunction()`, `disjunction()` | `AND p q = p q FALSE`; `OR p q = p TRUE q` |
+| `less_equal()` | `LE m n = ISZERO (SUB m n)` |
+| `less_than()` | `LT m n = NOT (LE n m)` |
+| `greater_equal()`, `greater_than()` | Reverse the operands of LE/LT |
+| `equal()` | `EQ m n = AND (LE m n) (LE n m)` |
+| `not_equal()` | `NE m n = NOT (EQ m n)` |
+
+Addition performs n steps and then m more steps. Multiplication repeats a group
+of n steps m times. These repetitions are encoded applications reduced by the
+engine, not Python arithmetic on decoded operands.
+
+The library AND/OR combinators take evaluated boolean arguments under ordinary
+call-by-value. Passing a divergent expression as an argument still exhausts the
+execution budget. The compiler must preserve source short-circuiting by delaying
+computations with thunks in Step 7; it cannot simply apply these builders to an
+unwrapped right-hand source computation.
+
+### Predecessor construction
+
+Start with `PAIR 0 0` and repeat this pure update n times:
+
+```text
+UPDATE state = PAIR (SND state) (SUCC (SND state))
+PRED n = FST (n UPDATE (PAIR 0 0))
+```
+
+| Updates | State (previous, current) |
+| --- | --- |
+| 0 | (0, 0) |
+| 1 | (0, 1) |
+| 2 | (1, 2) |
+| 3 | (2, 3) |
+
+After n updates, current represents n and previous represents `max(n - 1, 0)`.
+Selecting previous therefore gives predecessor; zero performs no updates and
+still returns zero. Repeating predecessor implements truncated subtraction.
+Consequently `m <= n` holds exactly when `SUB m n` is zero. Equality requires
+both directions of that relation. This explanation will also inform DESIGN.md.
+
+### Pair observation and aggregate budget
+
+A Church pair accepts a selector, which receives both components. FST supplies
+TRUE to select the first; SND supplies FALSE to select the second. Pair construction
+evaluates both components left to right before the resulting pair lambda is a value.
+
+The caller first evaluates the pair program to a lambda. Observation then runs
+the first projection and observes its result, followed by the second projection
+and its result, recursively. Every context receives only the remaining portion
+of the original observation budget. Components do not get fresh budgets.
+
+For a pair of literal 2 and true, the current builders use these observation steps:
+
+| Context | Steps |
+| --- | --- |
+| First projection | 4 |
+| Observe natural 2 | 4 |
+| Second projection | 4 |
+| Observe boolean true | 2 |
+| Total observation | 14 |
+
+A failing component reports a path such as `result.second` or
+`result.first.projection`. No partially decoded tuple is returned, even when
+earlier components succeeded. Successful pair observation returns the original
+pair lambda in `.term`, since multiple contexts have run and there is no single
+aggregate observation-output term. Scalar success and failure retain the output
+semantics in the interface table above.
+
+### Encoded computation example
+
+From `assigns/06/`, in `python -B`:
+
+```python
+from MySolution.encodings import add, boolean, multiply, numeral, pair
+from MySolution.evaluator import evaluate
+from MySolution.observers import observe
+from MySolution.target import App
+
+product = App(App(multiply(), numeral(3)), numeral(4))
+program = App(App(add(), numeral(2)), product)
+execution = evaluate(program, max_steps=100)
+answer = observe(execution.value, "natural", max_steps=1000)
+print(answer.status, answer.value)
+
+inner_pair = App(App(pair(), numeral(2)), boolean(True))
+nested_pair = App(App(pair(), inner_pair), numeral(3))
+execution = evaluate(nested_pair, max_steps=4)
+answer = observe(
+    execution.value, ("pair", ("pair", "natural", "boolean"), "natural"), max_steps=27
+)
+print(execution.steps, answer.value, answer.steps)
+```
+
+Expected output:
+
+```text
+completed 14
+4 ((2, True), 3) 27
+```
 
 ## Architecture
 
@@ -427,11 +555,11 @@ during observation. Pair observation is planned for Step 6.
 | Source helpers | `source_ops.py` | Printing and source name analysis | Planned |
 | Target terms and operations | `target.py` | Immutable `Var`, `Lam`, `App`; printing, names, substitution, alpha-equivalence | Implemented |
 | Shared evaluator | `evaluator.py` | Execute source and target syntax through one engine | Implemented |
-| Church encodings | `encodings.py` | Construct closed pure terms for data and operations | Numerals, booleans, identity implemented; other combinators pending |
+| Church encodings | `encodings.py` | Construct closed pure terms for data and operations | All required data/operations implemented; Z pending |
 | Compiler | `compiler.py` | Translate using `D0ExpVisitor`; never evaluate input | Planned |
-| Observers | `observers.py` | Decode expected data kinds through bounded target contexts | Natural/boolean implemented; pairs pending |
+| Observers | `observers.py` | Decode expected data kinds through bounded target contexts | Natural, boolean, and nested pairs implemented |
 | Demonstrations | `demo.py` | Run and report the required end-to-end examples | Planned |
-| Tests | `tests/` | Setup, target operations, evaluation, basic encodings, and scalar observation | In progress |
+| Tests | `tests/` | Setup, target operations, evaluation, encoded operations, scalar/pair observation | In progress |
 
 The intended pipeline is:
 
@@ -458,8 +586,8 @@ will build pure target contexts and use the same evaluator.
 Target execution uses weak, left-to-right call-by-value reduction and counts
 only beta-value steps. Scalar observation has its own budget and count, with
 completion, exhaustion, and malformed outputs distinguished. Pair projections
-and recursively observed components will share a separate aggregate observation
-budget when implemented in Step 6.
+and recursively observed components share one aggregate observation budget,
+separate from program execution.
 
 The initial planned demo defaults are 100,000 execution steps and 100,000
 observation steps per example. These are not measured requirements or verified
@@ -470,7 +598,7 @@ terms and reports open inputs clearly.
 ## Commands and deliverables still pending
 
 The planned demo command is `python -B -m MySolution.demo`. It is **not available
-in Step 5**. A later milestone will add its exact options and output details.
+in Step 6**. A later milestone will add its exact options and output details.
 
 `DESIGN.md`, PDF presentation slides, and the 15–20 minute face-visible recording
 are pending. Their actual files or recording link will be identified here when
@@ -497,5 +625,10 @@ observation context follows Task 4. The repetition explanation also follows the
 local September 3 lecture's Church-numeral slides
 (`lectures/lecture-09-03/slides/lambda_calculus_slides.tex`). Boolean observation
 uses the distinct closed-marker approach permitted by the assignment.
+
+The pair-state predecessor and derived operation definitions are constructed
+from the assignment's Church numerals, booleans, and required pair representation.
+They are explained above and tested through reduction; no external encoding
+implementation was copied. The required Z builder remains for Step 8.
 
 See [AI-TRANSCRIPT.md](AI-TRANSCRIPT.md) for AI assistance and verification.
