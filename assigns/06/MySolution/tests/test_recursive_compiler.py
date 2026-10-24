@@ -7,11 +7,11 @@ from unittest.mock import patch
 from MySolution import encodings as church
 from MySolution.compiler import CompilationError, compile_expr
 from MySolution.evaluator import evaluate
+from MySolution.examples import factorial, fibonacci, loop
 from MySolution.observers import observe
 from MySolution.source_ast import ast
 from MySolution.target import App, Lam, Var, alpha_equivalent, free_vars
 from .test_compiler import source_data
-from .test_source_evaluator import factorial, fibonacci, loop
 
 
 class RecursiveCompilerTests(unittest.TestCase):

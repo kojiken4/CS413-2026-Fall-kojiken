@@ -5,53 +5,9 @@ import unittest
 from unittest.mock import patch
 
 from MySolution.evaluator import SourceEvaluationError, evaluate
+from MySolution.examples import factorial, fibonacci, loop
 from MySolution.source_ast import ast
 from MySolution.target import App, Lam, Var
-
-
-def loop() -> ast.d0exp:
-    return ast.D0Eapp(
-        ast.D0Efix("loop", "x", ast.D0Eapp(ast.D0Evar("loop"), ast.D0Evar("x"))),
-        ast.D0Eint(0),
-    )
-
-
-def factorial() -> ast.D0Efix:
-    return ast.D0Efix(
-        "fact", "n",
-        ast.D0Eif0(
-            ast.D0Eop2("==", ast.D0Evar("n"), ast.D0Eint(0)),
-            ast.D0Eint(1),
-            ast.D0Eop2(
-                "*", ast.D0Evar("n"),
-                ast.D0Eapp(
-                    ast.D0Evar("fact"),
-                    ast.D0Eop2("-", ast.D0Evar("n"), ast.D0Eint(1)),
-                ),
-            ),
-        ),
-    )
-
-
-def fibonacci() -> ast.D0Efix:
-    return ast.D0Efix(
-        "fib", "n",
-        ast.D0Eif0(
-            ast.D0Eop2("<=", ast.D0Evar("n"), ast.D0Eint(1)),
-            ast.D0Evar("n"),
-            ast.D0Eop2(
-                "+",
-                ast.D0Eapp(
-                    ast.D0Evar("fib"),
-                    ast.D0Eop2("-", ast.D0Evar("n"), ast.D0Eint(1)),
-                ),
-                ast.D0Eapp(
-                    ast.D0Evar("fib"),
-                    ast.D0Eop2("-", ast.D0Evar("n"), ast.D0Eint(2)),
-                ),
-            ),
-        ),
-    )
 
 
 class SourceEvaluationTests(unittest.TestCase):

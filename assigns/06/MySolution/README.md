@@ -2,15 +2,16 @@
 
 ## Current status
 
-Steps 1–8 provide the Python package, source-AST adapter, immutable target terms,
+Steps 1–9 provide the Python package, source-AST adapter, immutable target terms,
 printing, name analysis, deterministic fresh names, capture-avoiding substitution,
 alpha-equivalence checking, and one shared evaluator for source and target
 programs. Church data, arithmetic, comparisons, boolean operations, pairs, and
 bounded scalar/nested-pair observation are implemented. Visitor compilation
 connects every required source form to target execution and observation, including
-delayed conditionals, short-circuit booleans, and recursion through CBV Z. The demo
-and final deliverables remain pending. Passing these tests does not establish a
-proof of correctness.
+delayed conditionals, short-circuit booleans, and recursion through CBV Z. One
+command now runs all 14 required demonstrations and saves their pure target
+terms. Final design/presentation/recording deliverables remain pending. Passing
+these tests does not establish a proof of correctness.
 
 The assignment is authoritative: [Assign06.md](../Assign06.md).
 [REQUIREMENTS.md](../REQUIREMENTS.md) provides the detailed requirement IDs.
@@ -23,6 +24,7 @@ required. Run these commands from `assigns/06/`:
 ```powershell
 python --version
 python -B -m unittest discover -s MySolution/tests -t . -v
+python -B -m MySolution.demo
 ```
 
 `-B` prevents bytecode-cache writes, including beside the supplied Assignment 5
@@ -55,6 +57,10 @@ Step 8 verification on Python 3.14.7: all **198 tests passed**, adding 17 recurs
 compiler tests and extending library checks to Z. Compiled factorial of 4 returns
 24 and Fibonacci of 5 returns 5, matching source evaluation. Fix-based LOOP
 exhausts its target budget; skipped loops complete. No divergent source is run.
+
+Step 9 verification on Python 3.14.7: all **213 tests passed**, including 15 new
+demonstration tests. The documented default demo command completed with
+`Summary: 14/14 demonstrations passed.` and saved all 14 fully expanded terms.
 
 The adapter requires the repository's existing `assigns/05/lambda1_vp.py` in
 its original relative location. It loads that exact file by location without
@@ -734,9 +740,10 @@ Expected output:
 
 These counts use the current fully expanded terms and separate budgets of
 100,000 for execution and observation. They are measured reduction counts,
-not complexity bounds. Recursive test fixtures reuse the source evaluator's
-factorial, Fibonacci, and LOOP constructors; explicit answers independently
-check the source and compiled results.
+not complexity bounds. The demo and recursive/source tests share the factorial,
+Fibonacci, and LOOP constructors in `examples.py`; explicit answers independently
+check the source and compiled results. These constructors were moved from the
+source tests in Step 9 so the executable demonstration never depends on tests.
 
 ### Coverage and diagnostics
 
@@ -773,8 +780,9 @@ diverging source evaluation is run.
 | Church encodings | `encodings.py` | Construct closed pure terms for data, operations, and recursion | All required builders implemented, including Z |
 | Compiler | `compiler.py` | Translate using `D0ExpVisitor`; never evaluate input | All required source forms implemented |
 | Observers | `observers.py` | Decode expected data kinds through bounded target contexts | Natural, boolean, and nested pairs implemented |
-| Demonstrations | `demo.py` | Run and report the required end-to-end examples | Planned |
-| Tests | `tests/` | Component tests, source helpers, and full compiler pipeline | 198 tests pass; demo acceptance checks remain |
+| Examples | `examples.py` | Construct all 14 required source ASTs and explicit expected answers | Implemented; shared recursive fixtures |
+| Demonstrations | `demo.py` | Run and report the required end-to-end examples; save pure terms | All 14 pass with default budgets |
+| Tests | `tests/` | Component, compiler pipeline, and demonstration acceptance tests | All 213 pass |
 
 The intended pipeline is:
 
@@ -789,7 +797,7 @@ Source AST --------------------> shared evaluator ----> source result
 ```
 
 For terminating examples, compare source and decoded target results against
-explicit expected answers. Divergent examples will run only through bounded
+explicit expected answers. Divergent examples run only through bounded
 target execution, avoiding an unbounded source evaluation.
 
 The compiler depends on source/target syntax, validation helpers, and encoding
@@ -805,16 +813,97 @@ completion, exhaustion, and malformed outputs distinguished. Pair projections
 and recursively observed components share one aggregate observation budget,
 separate from program execution.
 
-The initial planned demo defaults are 100,000 execution steps and 100,000
-observation steps per example. These are not measured requirements or verified
-sufficient budgets yet; finalize them after running the terminating examples.
+The measured demo defaults are **10,000 execution steps** and **10,000 observation
+steps per example**, independently configurable. These cover all terminating
+required examples: the largest execution count is 1,794 (Fibonacci 5), and the
+largest observation count is 333 (factorial 4). Step 8's standalone factorial
+example above retains its explicitly configured 100,000-step budgets. Neither
+choice imposes a universal bound on arbitrary programs or their running time.
 Compilation supports open expressions. Target execution requires closed
 terms and reports open inputs clearly.
 
-## Commands and deliverables still pending
+## Demonstration command and results
 
-The planned demo command is `python -B -m MySolution.demo`. It is **not available
-in Step 8**. Step 9 will add its exact options and output details.
+From `assigns/06/`, run:
+
+```powershell
+python -B -m MySolution.demo
+```
+
+The runner constructs fresh source ASTs, compiles each, evaluates its target
+term, and observes completed values using the specified data kind. For each
+terminating case it also evaluates the original source with the same shared
+engine. PASS requires agreement between source result, observed target result,
+and the explicit expected answer, with booleans distinguished from integers.
+Expected answers are comparisons, never inputs to target computation.
+
+For each case the report includes the fully printed source, saved pure-term
+location, execution status/budget/count, separate observation status/budget/count,
+decoded answer when available, expected answer, source answer or skip reason,
+and PASS/FAIL. Execution exhaustion skips observation and prints its zero used
+steps and configured budget; observation exhaustion or malformed output prints
+no decoded answer and fails a case expecting data. Other examples still run.
+
+All fully expanded generated terms are saved as UTF-8 text in
+`MySolution/demo-output/DEMO-01.lambda.txt` through `DEMO-14.lambda.txt`. They use
+the exact target printer notation and contain no unresolved encoding names.
+Paths in the report are absolute. Re-running replaces these named generated
+files. The default output folder is ignored by Git and can be regenerated by
+the command; it contains demonstration artifacts, not required source code.
+
+Options, runnable from the same directory:
+
+```powershell
+python -B -m MySolution.demo --help
+python -B -m MySolution.demo --execution-budget 10000 --observation-budget 10000 --output-dir MySolution/demo-output
+```
+
+Both budgets accept nonnegative integers, including zero. Relative output paths
+are resolved from the working directory; quote paths that contain spaces. Exit
+status **0** means all 14 cases matched expectations, **1** means at least one
+did not, and **2** reports invalid command arguments or an output-file error.
+A smaller execution or observation budget may make a terminating case fail;
+this is reported as insufficient resources, never as a decoded answer.
+
+The two curated cases marked for expected exhaustion skip unbounded source
+evaluation. The runner is a demonstration collection, not a termination checker
+for arbitrary source programs. A PASS for an exhausted case means it used the
+budget as expected; finite exhaustion by itself does not prove nontermination.
+
+Measured default-command results on Python 3.14.7:
+
+| ID | Example | Decoded/expected result | Execution steps | Observation steps |
+| --- | --- | --- | --- | --- |
+| DEMO-01 | `2 + 3 * 4` | 14 | 4 | 26 |
+| DEMO-02 | `2 - 5` | 0 | 87 | 2 |
+| DEMO-03 | `if 2 <= 3 then 7 else 9` | 7 | 77 | 9 |
+| DEMO-04 | `let x = 3 in (lam y. x + y) 4` | 7 | 4 | 13 |
+| DEMO-05 | `fst (pair 2 true)` | 2 | 6 | 4 |
+| DEMO-06 | `snd (pair 2 true)` | true | 6 | 2 |
+| DEMO-07 | `(lam f. f 3) (lam x. x + 1)` | 4 | 4 | 10 |
+| DEMO-08 | `if true then 1 else LOOP` | 1 | 3 | 3 |
+| DEMO-09 | `(lam x. 0) LOOP` | Expected execution exhaustion | 10000 | 0 (skipped) |
+| DEMO-10 | Factorial 4 | 24 | 471 | 333 |
+| DEMO-11 | Fibonacci 5 | 5 | 1794 | 45 |
+| DEMO-12 | `LOOP` | Expected execution exhaustion | 10000 | 0 (skipped) |
+| DEMO-13 | `true and false` | false | 3 | 2 |
+| DEMO-14 | `false or true` | true | 3 | 2 |
+
+The final line is `Summary: 14/14 demonstrations passed.` All 12 terminating
+results agree with source evaluation. Counts are implementation measurements,
+not grading requirements. IDs/order follow REQUIREMENTS.md Section 7.1; the
+original Assign06 table lists the same programs in a different order.
+
+`tests/test_demo.py` verifies every case's source shape, expected data/kind,
+closed pure output, source preservation, source/target agreement, and both
+looping cases without unbounded source evaluation. It also runs the real command
+in a fresh process and compares all 14 saved terms with compiler output. Failure
+checks cover exhausted budgets, exact completion boundaries, malformed
+observations, false/integer confusion, invalid arguments, output-file errors,
+and continuing the collection after failed expectations. Temporary test folders
+stay inside the solution and are removed after each test.
+
+## Deliverables still pending
 
 `DESIGN.md`, PDF presentation slides, and the 15–20 minute face-visible recording
 are pending. Their actual files or recording link will be identified here when
