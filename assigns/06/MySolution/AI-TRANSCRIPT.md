@@ -3,10 +3,10 @@
 ## Tools and scope
 
 OpenAI Codex assisted with assignment interpretation, planning, the objectives
-reference, setup, target operations, and bounded target evaluation. It used local
+reference, setup, target operations, and shared source/target evaluation. It used local
 file inspection, patch editing, Git status/diff inspection, and Python's
-standard-library unittest runner. Source evaluation, compilation, encodings,
-and observers remain pending.
+standard-library unittest runner. Compilation, encodings, and observers remain
+pending.
 
 ## Important requests and decisions
 
@@ -26,6 +26,9 @@ and observers remain pending.
 6. **Step 3:** Add bounded weak call-by-value target evaluation, precise step
    counts, completion/exhaustion results, tests, and updated documentation. Keep
    the engine ready for source cases in the next milestone and pause afterward.
+7. **Step 4:** Proceed to source evaluation and, from now on, also explain each
+   milestone's overarching purpose and how it contributes to the whole assignment.
+   Keep the established explain/implement/verify/commit-message/review workflow.
 
 Codex proposed loading the supplied Assignment 5 module by its exact relative
 location under a distinct module name. This avoids changing the search path or
@@ -103,4 +106,41 @@ All **46 tests passed** on Python 3.14.7 with the README unittest command,
 including 19 new evaluator tests. Tests cover both frame contexts, resumption,
 precise budgets, strictness, unchanged lambda bodies, determinism, input
 preservation, open-term rejection, and 5,000 bounded divergent contractions
-without recursive evaluator calls. Step 3 student review is pending.
+without recursive evaluator calls. The student subsequently requested Step 4;
+no additional claim of line-by-line review is made.
+
+## Step 4 decisions and verification
+
+The high-level explanation identified source execution as the baseline against
+which future compiled results will be compared, alongside explicit expected
+answers. It distinguished native source arithmetic from target beta reduction.
+The teaching example showed why a function defined with x = 3 must keep that
+binding even if called under x = 99.
+
+Codex extended the existing evaluator loop rather than writing another source
+evaluator. Both ASTs share application/variable dispatch, continuation sequencing,
+and value delivery. Source-only frames handle operators, conditionals, lets, and
+pairs. Saved environments prevent a child expression's bindings from leaking
+into its siblings. Target application still calls capture-avoiding substitution.
+
+Source values and lexical environments reuse the supplied D0V/ENV record classes,
+and the closure-application approach adapts the supplied defining-environment
+rules. No supplied interpreter entry point or evaluation visitor is called.
+Recursive application adds the function binding before its parameter so the
+parameter shadows a coincident function name. Source-specific arithmetic uses
+Assignment 6 rules, including subtraction truncated at zero and short-circuit
+booleans. These helpers are never called by valid target execution.
+
+The same result structure now exposes completed source values, with steps and
+budget set to None. Source evaluation is unbounded and rejects a supplied
+non-None budget. Whole-AST validation of unsupported code is deferred to the
+compiler; evaluation visits only computations selected by control flow.
+
+All **84 tests passed** on Python 3.14.7: the previous 46 plus 38 source and
+engine-boundary tests. Tests cover all source forms/operators, lexical scope,
+recursive closures, coincident binders, factorial, Fibonacci, skipped divergence,
+strict evaluation via finite error probes, input preservation, independent calls,
+and a terminating 2,000-call countdown. Test doubles verify no delegation to the
+supplied interpreter, no source calls to target substitution, and no target calls
+to source arithmetic. No directly diverging source evaluation was run. Step 4
+student review is pending.

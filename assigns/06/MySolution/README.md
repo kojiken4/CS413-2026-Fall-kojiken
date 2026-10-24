@@ -2,12 +2,11 @@
 
 ## Current status
 
-Steps 1–3 provide the Python package, source-AST adapter, immutable target terms,
+Steps 1–4 provide the Python package, source-AST adapter, immutable target terms,
 printing, name analysis, deterministic fresh names, capture-avoiding substitution,
-alpha-equivalence checking, and bounded target evaluation. Source evaluation
-will extend the same engine in Step 4. The compiler, encodings, observers, and
-demo are not implemented yet. Passing these tests does not establish compiler
-correctness.
+alpha-equivalence checking, and one shared evaluator for source and target
+programs. The compiler, encodings, observers, and demo are not implemented yet.
+Passing these tests does not establish compiler correctness.
 
 The assignment is authoritative: [Assign06.md](../Assign06.md).
 See [OBJECTIVES.md](OBJECTIVES.md) for the component overview and
@@ -35,6 +34,10 @@ operation tests, several with additional subcases).
 
 Step 3 verification on Python 3.14.7: all **46 tests passed**, including 19 new
 target-evaluation tests.
+
+Step 4 verification on Python 3.14.7: all **84 tests passed**, including 38 new
+source and engine-boundary tests. Source factorial of 4 returns 24 and Fibonacci
+of 5 returns 5. All existing target budget/count tests still pass.
 
 The adapter requires the repository's existing `assigns/05/lambda1_vp.py` in
 its original relative location. It loads that exact file by location without
@@ -133,8 +136,8 @@ valid; the module is not a general AST validator.
 
 ## Target evaluation
 
-`evaluate(expression, max_steps=...)` in `evaluator.py` currently executes closed
-target terms. Source support will be added to this same engine in Step 4; the
+`evaluate(expression, max_steps=...)` in `evaluator.py` executes closed target
+terms. The same engine also evaluates source ASTs, as described below; the
 supplied Assignment 5 interpreter is not used.
 
 Evaluation is **weak**: a lambda completes as a value without running its body.
@@ -148,7 +151,8 @@ or a function value waiting for its argument. This avoids one Python call frame
 per reduction. Name analysis and substitution still use recursive tree traversal,
 so the deep-input limitation documented above remains.
 
-The returned immutable `EvaluationResult` has these fields/properties:
+For target calls, the returned immutable `EvaluationResult` has these
+fields/properties:
 
 | Name | Meaning |
 | --- | --- |
@@ -198,6 +202,102 @@ Expected output:
   restriction applies only to execution, and the future compiler must support
   open expressions too.
 
+## Source evaluation
+
+### High-level purpose
+
+Source execution establishes a baseline for checking the future compiler. Run
+an original program with the shared engine, then later run and observe its
+compiled target term. Both results must agree with the explicit expected answer.
+The compiler itself must never obtain an answer by running source code.
+
+The engine implements every required source constructor and operator. Source
+arithmetic may use Python arithmetic because numbers and operations are built
+into the source language. Target execution still operates only on target syntax
+through substitution and never calls the source arithmetic helpers.
+
+### Interface and values
+
+Call `evaluate(source_expression)` without `max_steps`. It returns the same
+`EvaluationResult` structure, with `status == "completed"` and both `term` and
+`value` referring to a source value. `steps` and `budget` are `None`: source
+execution does not claim zero target steps or provide a finite execution limit.
+Passing a non-None source budget raises `TypeError` rather than silently ignoring
+it. Use source evaluation only for terminating examples; divergent examples will
+be compiled and run with a target budget.
+
+The source values reuse the supplied record classes:
+
+| Value | Meaning |
+| --- | --- |
+| `D0Vint(n)` | Natural number, available as `.arg1` |
+| `D0Vbtf(b)` | Boolean, available as `.arg1` |
+| `D0Vpair(left, right)` | Evaluated components in `.arg1` and `.arg2` |
+| `D0Vlam(env, expression)` | Ordinary closure with its defining environment |
+| `D0Vfix(env, expression)` | Recursive closure with its defining environment |
+
+For example, from `assigns/06/` in `python -B`:
+
+```python
+from MySolution.evaluator import evaluate
+from MySolution.source_ast import ast
+
+expression = ast.D0Eop2(
+    "+", ast.D0Eint(2), ast.D0Eop2("*", ast.D0Eint(3), ast.D0Eint(4))
+)
+result = evaluate(expression)
+print(result.status, result.value.arg1, result.steps, result.budget)
+print(evaluate(ast.D0Eop2("-", ast.D0Eint(2), ast.D0Eint(5))).value.arg1)
+```
+
+Expected output:
+
+```text
+completed 14 None None
+0
+```
+
+### Closures and shared control flow
+
+A closure pairs function syntax with the environment where it was defined.
+The environment is an immutable linked chain of bindings; lookup selects the
+nearest matching name. Calling a source function extends its defining environment
+with the argument, rather than extending the caller's environment. For example,
+a function created with `x = 3` still uses three if its caller later binds `x = 99`.
+
+A recursive call first binds the function name to the same recursive closure,
+then binds the parameter to the argument. Adding the parameter last makes it
+shadow the function name when both names coincide. Creating either kind of
+closure does not evaluate its body. This implements built-in source recursion;
+the pure target Z encoding and recursive compilation are still planned for Step 8.
+
+Both languages share the evaluation loop, variable/application dispatch, value
+delivery, and continuation stack. Source frames add lets, conditionals, operators,
+pairs, and projections. Frames save the surrounding environment before evaluating
+a subexpression, so its temporary bindings do not leak into a sibling expression.
+Target application performs substitution; source application enters a closure's
+environment. No call delegates to the supplied interpreter or a second source
+evaluator.
+
+Source conditionals evaluate only the selected branch. `and` skips the right
+operand when the left is false; `or` skips it when the left is true. Function
+arguments, let initializers, arithmetic/comparison operands, and both pair
+components are strict and evaluated left to right. Subtraction truncates at zero,
+and `D0Eif0` requires a boolean condition, regardless of its constructor name.
+
+### Source errors and current boundaries
+
+`SourceEvaluationError` (a `ValueError` subclass) reports an unbound source name,
+a reached negative literal or unsupported operator, or a basic misuse such as
+projecting a non-pair. There is no static type checker or promise to preserve
+arbitrary ill-typed program behavior. A free name in an uncalled source function
+body is not looked up until that body executes.
+
+Evaluation follows control flow and does not inspect skipped branches or uncalled
+bodies for unsupported forms. Whole-AST rejection, including unused code, belongs
+to the compiler milestone. The original source AST is preserved during execution;
+the supplied source value records themselves remain the instructor's record types.
+
 ## Architecture
 
 | Component | Module | Responsibility | Status |
@@ -205,12 +305,12 @@ Expected output:
 | Source integration | `source_ast.py` | Load the supplied AST and visitor interface once | Implemented |
 | Source helpers | `source_ops.py` | Printing and source name analysis | Planned |
 | Target terms and operations | `target.py` | Immutable `Var`, `Lam`, `App`; printing, names, substitution, alpha-equivalence | Implemented |
-| Shared evaluator | `evaluator.py` | Execute source and target syntax through one engine | Target path implemented; source pending |
+| Shared evaluator | `evaluator.py` | Execute source and target syntax through one engine | Implemented |
 | Church encodings | `encodings.py` | Construct closed pure terms for data and operations | Planned |
 | Compiler | `compiler.py` | Translate using `D0ExpVisitor`; never evaluate input | Planned |
 | Observers | `observers.py` | Decode expected data kinds through bounded target contexts | Planned |
 | Demonstrations | `demo.py` | Run and report the required end-to-end examples | Planned |
-| Tests | `tests/` | Setup, target operations, and target evaluation; remaining features added incrementally | In progress |
+| Tests | `tests/` | Setup, target operations, both evaluation paths, and engine boundaries | In progress |
 
 The intended pipeline is:
 
@@ -248,7 +348,7 @@ terms and reports open inputs clearly.
 ## Commands and deliverables still pending
 
 The planned demo command is `python -B -m MySolution.demo`. It is **not available
-in Step 3**. A later milestone will add its exact options and output details.
+in Step 4**. A later milestone will add its exact options and output details.
 
 `DESIGN.md`, PDF presentation slides, and the 15–20 minute face-visible recording
 are pending. Their actual files or recording link will be identified here when
@@ -259,9 +359,11 @@ required implementation.
 
 Source AST classes and the visitor interface come from the instructor-supplied
 Assignment 5 `lambda1_vp.py`, used unchanged. Its existing free-variable visitor
-is used in setup tests. Its interpreter is not used to execute assignment
-programs: Assignment 6 requires its own shared evaluator and different operator
-semantics.
+is used in setup tests. Its value/environment records and closure representation
+are reused in the shared evaluator, and its defining-environment application
+approach informs the source cases. Its interpreter is not called: source
+evaluation is implemented in the same continuation loop as target execution,
+with Assignment 6's operator semantics.
 
 The `FreshNameGenerator` policy and scoped binder-renaming approach in `target.py`
 adapt the student's Assignment 5 `MySolution/operations.py`. The target nodes,
