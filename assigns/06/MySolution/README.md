@@ -2,11 +2,12 @@
 
 ## Current status
 
-Steps 1–2 provide the Python package, source-AST adapter, immutable target terms,
+Steps 1–3 provide the Python package, source-AST adapter, immutable target terms,
 printing, name analysis, deterministic fresh names, capture-avoiding substitution,
-and alpha-equivalence checking. The compiler, shared evaluator, encodings,
-observers, and demo are not implemented yet. Passing these tests does not
-establish compiler correctness.
+alpha-equivalence checking, and bounded target evaluation. Source evaluation
+will extend the same engine in Step 4. The compiler, encodings, observers, and
+demo are not implemented yet. Passing these tests does not establish compiler
+correctness.
 
 The assignment is authoritative: [Assign06.md](../Assign06.md).
 See [OBJECTIVES.md](OBJECTIVES.md) for the component overview and
@@ -32,6 +33,9 @@ hash was unchanged before and after this milestone.
 Step 2 verification on Python 3.14.7: all **27 tests passed** (4 setup and 23 target
 operation tests, several with additional subcases).
 
+Step 3 verification on Python 3.14.7: all **46 tests passed**, including 19 new
+target-evaluation tests.
+
 The adapter requires the repository's existing `assigns/05/lambda1_vp.py` in
 its original relative location. It loads that exact file by location without
 changing the module search path or modifying the supplied code. All solution
@@ -55,7 +59,8 @@ D0Eop2(name='+', arg1=D0Eint(arg1=2), arg2=D0Eint(arg1=3))
 ```
 
 This constructs syntax for `2 + 3`; it does not execute the program. The output
-is the supplied dataclass representation, not our future source or target printer.
+is the supplied dataclass representation; the target printer handles target
+terms, and a source printer is still planned.
 
 ## Target terms and operations
 
@@ -126,6 +131,73 @@ terms can reach Python's recursion limit; this milestone does not implement a
 stack-independent traversal or an evaluator. Constructor child shapes are assumed
 valid; the module is not a general AST validator.
 
+## Target evaluation
+
+`evaluate(expression, max_steps=...)` in `evaluator.py` currently executes closed
+target terms. Source support will be added to this same engine in Step 4; the
+supplied Assignment 5 interpreter is not used.
+
+Evaluation is **weak**: a lambda completes as a value without running its body.
+Applications evaluate the function, then the argument, then substitute the
+argument value into the function body. Even an argument that the function ignores
+must finish first. There is no reduction beneath lambdas and no eta reduction.
+
+The engine uses a loop and a stack of continuation frames. A frame records work
+waiting for the current expression: either an argument waiting for its function,
+or a function value waiting for its argument. This avoids one Python call frame
+per reduction. Name analysis and substitution still use recursive tree traversal,
+so the deep-input limitation documented above remains.
+
+The returned immutable `EvaluationResult` has these fields/properties:
+
+| Name | Meaning |
+| --- | --- |
+| `status` | `"completed"` or `"exhausted"` |
+| `term` | Completed lambda, or the whole unfinished term with its surrounding applications restored |
+| `value` | Completed lambda; `None` on exhaustion |
+| `steps` | Number of beta-value contractions actually performed |
+| `budget` | The supplied `max_steps` |
+
+Only a beta-value contraction consumes a step. Traversing applications or moving
+between continuation frames does not. A lambda completes in zero steps even with
+a zero budget. A value reached on the final allowed step counts as completed.
+Exhaustion means another contraction is needed; it does not prove nontermination.
+An unfinished term can be passed to `evaluate` again with a new budget; the new
+call reports only its own step count.
+
+For example, after starting `python -B` from `assigns/06/`:
+
+```python
+from MySolution.evaluator import evaluate
+from MySolution.target import App, Lam, Var, pretty
+
+identity = Lam("x", Var("x"))
+term = App(App(identity, identity), App(identity, identity))
+for budget in range(4):
+    result = evaluate(term, max_steps=budget)
+    print(budget, result.status, result.steps, pretty(result.term))
+```
+
+Expected output:
+
+```text
+0 exhausted 0 (((lam x. x) (lam x. x)) ((lam x. x) (lam x. x)))
+1 exhausted 1 ((lam x. x) ((lam x. x) (lam x. x)))
+2 exhausted 2 ((lam x. x) (lam x. x))
+3 completed 3 (lam x. x)
+```
+
+### Execution input errors
+
+- A negative budget raises `ValueError`.
+- A noninteger budget, including a boolean, raises `TypeError`.
+- A term with free variables raises `OpenTermError` (a `ValueError` subclass),
+  listing those names in sorted order. This restriction also applies to a lambda
+  with free variables in its body, even though that body would not execute yet.
+- Structural operations and substitution still accept open terms. The closed-term
+  restriction applies only to execution, and the future compiler must support
+  open expressions too.
+
 ## Architecture
 
 | Component | Module | Responsibility | Status |
@@ -133,12 +205,12 @@ valid; the module is not a general AST validator.
 | Source integration | `source_ast.py` | Load the supplied AST and visitor interface once | Implemented |
 | Source helpers | `source_ops.py` | Printing and source name analysis | Planned |
 | Target terms and operations | `target.py` | Immutable `Var`, `Lam`, `App`; printing, names, substitution, alpha-equivalence | Implemented |
-| Shared evaluator | `evaluator.py` | Execute source and target syntax through one engine | Planned |
+| Shared evaluator | `evaluator.py` | Execute source and target syntax through one engine | Target path implemented; source pending |
 | Church encodings | `encodings.py` | Construct closed pure terms for data and operations | Planned |
 | Compiler | `compiler.py` | Translate using `D0ExpVisitor`; never evaluate input | Planned |
 | Observers | `observers.py` | Decode expected data kinds through bounded target contexts | Planned |
 | Demonstrations | `demo.py` | Run and report the required end-to-end examples | Planned |
-| Tests | `tests/` | Setup and target-operation tests; remaining features added incrementally | In progress |
+| Tests | `tests/` | Setup, target operations, and target evaluation; remaining features added incrementally | In progress |
 
 The intended pipeline is:
 
@@ -160,9 +232,9 @@ The compiler will depend on source/target syntax and encoding builders, not on
 the evaluator. The evaluator will not import or invoke the compiler. Observers
 will build pure target contexts and use the same evaluator.
 
-## Planned execution and observation contracts
+## Execution and planned observation contracts
 
-Target execution will use weak, left-to-right call-by-value reduction and count
+Target execution uses weak, left-to-right call-by-value reduction and counts
 only beta-value steps. Observation will have its own budget and count, including
 pair projections and recursively observed components. Completion, exhaustion,
 and malformed observations will remain distinguishable.
@@ -170,13 +242,13 @@ and malformed observations will remain distinguishable.
 The initial planned demo defaults are 100,000 execution steps and 100,000
 observation steps per example. These are not measured requirements or verified
 sufficient budgets yet; finalize them after running the terminating examples.
-Compilation will support open expressions. Target execution will initially
-require closed terms and report open inputs clearly.
+Compilation will support open expressions. Target execution requires closed
+terms and reports open inputs clearly.
 
 ## Commands and deliverables still pending
 
 The planned demo command is `python -B -m MySolution.demo`. It is **not available
-in Step 2**. A later milestone will add its exact options and output details.
+in Step 3**. A later milestone will add its exact options and output details.
 
 `DESIGN.md`, PDF presentation slides, and the 15–20 minute face-visible recording
 are pending. Their actual files or recording link will be identified here when

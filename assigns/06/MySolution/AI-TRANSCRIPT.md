@@ -3,9 +3,10 @@
 ## Tools and scope
 
 OpenAI Codex assisted with assignment interpretation, planning, the objectives
-reference, Step 1 setup, and Step 2 target operations. It used local file inspection, patch editing, Git
-status/diff inspection, and Python's standard-library unittest runner. No
-compiler, evaluator, encodings, or observers have been implemented yet.
+reference, setup, target operations, and bounded target evaluation. It used local
+file inspection, patch editing, Git status/diff inspection, and Python's
+standard-library unittest runner. Source evaluation, compilation, encodings,
+and observers remain pending.
 
 ## Important requests and decisions
 
@@ -22,6 +23,9 @@ compiler, evaluator, encodings, or observers have been implemented yet.
 5. **Step 2:** Add immutable pure target terms, exact printing, name analysis,
    deterministic fresh names, substitution, alpha-equivalence, tests, and updated
    documentation. Stop after verification for the next review checkpoint.
+6. **Step 3:** Add bounded weak call-by-value target evaluation, precise step
+   counts, completion/exhaustion results, tests, and updated documentation. Keep
+   the engine ready for source cases in the next milestone and pause afterward.
 
 Codex proposed loading the supplied Assignment 5 module by its exact relative
 location under a distinct module name. This avoids changing the search path or
@@ -77,4 +81,26 @@ All **27 tests passed** on Python 3.14.7 using the same README command: 4 setup
 tests and 23 target-operation tests, with additional subcases. These cover open
 capture hazards, repeated binders, collisions with names in both input terms,
 input preservation, deterministic output, printer formats, identifier rules,
-and binding-sensitive alpha-equivalence. Step 2 student review is pending.
+and binding-sensitive alpha-equivalence. The student subsequently requested
+Step 3; no additional claim of line-by-line review is made.
+
+## Step 3 decisions and verification
+
+Codex added `evaluator.py` with an iterative evaluation loop and explicit
+continuation frames for waiting arguments and waiting function values. Only
+beta-value contractions consume the configured budget. Target application calls
+the existing capture-avoiding substitution; it never calls a compiler, source
+interpreter, or encoded arithmetic shortcut. Source cases will extend the same
+engine in Step 4.
+
+The explanation introduced weak evaluation and continuation frames using the
+budget-by-budget example `(I I) (I I)`. Completion on the final permitted step is
+successful. Exhaustion returns the whole residual term with surrounding
+applications reconstructed, and exposes no completed `value`. Closed-execution
+restrictions and errors for invalid budgets are documented in README.
+
+All **46 tests passed** on Python 3.14.7 with the README unittest command,
+including 19 new evaluator tests. Tests cover both frame contexts, resumption,
+precise budgets, strictness, unchanged lambda bodies, determinism, input
+preservation, open-term rejection, and 5,000 bounded divergent contractions
+without recursive evaluator calls. Step 3 student review is pending.
