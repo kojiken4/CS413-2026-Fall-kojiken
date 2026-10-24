@@ -1,8 +1,7 @@
 """Source printing and whole-AST checks without execution or input mutation.
 
 The printer and name-collection traversal adapt Assignment 5 MySolution/operations.py.
-Checks use Assignment 6's narrower literals/operators. Fix syntax is checked here;
-its translation is added to the compiler in Step 8.
+Checks use Assignment 6's narrower literals/operators, including recursive bodies.
 """
 
 import re
@@ -11,7 +10,7 @@ from .source_ast import ast
 
 
 class CompilationError(ValueError):
-    """Source syntax is unsupported or unavailable at this compiler milestone."""
+    """Source syntax is unsupported by the assignment's compilation language."""
 
 
 _BINARY_OPERATORS = frozenset({

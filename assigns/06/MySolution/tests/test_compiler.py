@@ -321,14 +321,14 @@ class NonrecursiveCompilerTests(unittest.TestCase):
                         compile_expr(expression)
                     self.assertEqual(expression, before)
 
-    def test_fix_is_explicitly_unavailable_until_step_8(self) -> None:
+    def test_fix_is_supported_in_applications_and_unused_branches(self) -> None:
         expression = ast.D0Efix("f", "x", ast.D0Evar("x"))
-        with self.assertRaisesRegex(CompilationError, "Step 8"):
-            compile_expr(expression)
-        with self.assertRaisesRegex(CompilationError, "Step 8"):
-            compile_expr(ast.D0Eif0(ast.D0Ebtf(True), ast.D0Eint(1), expression))
+        self.assert_pipeline(ast.D0Eapp(expression, ast.D0Eint(3)), "natural", 3)
+        self.assert_pipeline(
+            ast.D0Eif0(ast.D0Ebtf(True), ast.D0Eint(1), expression), "natural", 1,
+        )
 
-    def test_unsupported_code_inside_fix_is_checked_before_stage_rejection(self) -> None:
+    def test_unsupported_code_inside_fix_is_checked(self) -> None:
         expression = ast.D0Efix("f", "x", ast.D0Eint(-1))
         with self.assertRaisesRegex(CompilationError, "negative literal.*-1"):
             compile_expr(expression)

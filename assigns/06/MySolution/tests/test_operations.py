@@ -18,7 +18,7 @@ OPERATIONS = (
     church.add, church.subtract, church.multiply,
     church.negation, church.conjunction, church.disjunction,
     church.less_than, church.less_equal, church.greater_than, church.greater_equal,
-    church.equal, church.not_equal,
+    church.equal, church.not_equal, church.z_combinator,
 )
 
 

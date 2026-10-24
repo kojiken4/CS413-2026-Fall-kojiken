@@ -4,10 +4,10 @@
 
 OpenAI Codex assisted with assignment interpretation, planning, the objectives
 reference, setup, target operations, shared source/target evaluation, basic Church
-encodings, scalar/nested-pair observers, and nonrecursive visitor compilation.
+encodings, scalar/nested-pair observers, and visitor compilation including CBV recursion.
 It used local file inspection, patch editing,
 Git status/diff inspection, and Python's standard-library unittest runner.
-Z, fix compilation, and demonstrations remain pending.
+Z and fix compilation are implemented; demonstrations remain pending.
 
 ## Important requests and decisions
 
@@ -35,6 +35,9 @@ Z, fix compilation, and demonstrations remain pending.
 9. **Step 7:** Connect source ASTs to the existing target pipeline with a
    nonrecursive visitor compiler, delayed control flow, full syntax checks,
    tests, documentation, and a pause at the review/commit checkpoint.
+10. **Step 8:** Add the required CBV Z builder and fix translation, explain their
+    overarching purpose and delayed recursion, verify terminating and divergent
+    recursive programs, and pause at the review/commit checkpoint.
 
 Codex proposed loading the supplied Assignment 5 module by its exact relative
 location under a distinct module name. This avoids changing the search path or
@@ -215,3 +218,46 @@ Nonrecursive self-application fixtures check skipped divergence and strict/selec
 divergence before fix-based LOOP is available. No directly diverging source
 evaluation was run. The evaluator, encoding, and observer modules were unchanged.
 Step 7 student review is pending; no automatic staging or commits occurred.
+
+## Step 8 decisions and verification
+
+The student requested Step 8, retaining concise teaching, the high-level purpose
+of each component, and a manual review/commit checkpoint. Codex explained how
+the target obtains recursion without adding syntax or evaluator primitives:
+`Z (lam f. lam x. C[body])` supplies the function with a delayed recursive call.
+The `lam v. x x v` wrapper prevents immediate CBV unfolding; conditional thunks
+separately keep the unused recursive branch from running at a base case.
+
+`encodings.z_combinator` builds the exact assignment encoding up to fresh bound
+names. Both arms use the shared deterministic name generator. The compiler's
+fix visitor compiles the body and constructs the required nested binders and
+application; no evaluation is invoked. This nesting preserves parameter-over-
+function shadowing for coincident names. Whole-source validation continues to
+reject unsupported code in every recursive body, including unused definitions.
+The shared evaluator, observers, and supplied Assignment 5 file were unchanged.
+
+Verification used `python -B -m unittest discover -s MySolution/tests -t . -v`
+from `assigns/06/`. All **198 tests passed** on Python 3.14.7: the previous 181
+plus 17 recursive compiler tests. Existing library purity, closure, naming,
+determinism, and no-evaluation checks now also include Z. The temporary fix
+rejection test was replaced with successful compilation and observation.
+
+New tests compare source and observed target results with explicit answers for
+factorial 0/4, Fibonacci 0/1/5, recursive lexical scope, shadowing, common generated
+name collisions, and nested pairs. Other checks verify the required Z structure,
+ordinary Y's premature CBV unfolding, exact three-step function creation,
+compile-time input preservation and deterministic output, and compilation with
+all evaluator entry points patched to fail. Fix-based LOOP and selected/strict
+uses exhaust bounded target evaluation; skipped loops complete. Directly
+diverging source programs are never evaluated.
+
+Factorial 4 yields 24 in 471 execution steps and 333 observation steps.
+Fibonacci 5 yields 5 in 1794 execution steps and 45 observation steps. Both use
+independent 100,000-step budgets. The README includes the explanation, expanded
+translation rule, coverage, measured results, and a runnable factorial example.
+All eight documented Python examples were executed and matched their output;
+local documentation links and whitespace were checked. The supplied source
+SHA-256 remained unchanged. Tests are evidence, not a formal correctness proof.
+
+Step 8 awaits student review; no staging or commits were performed. The 14-case
+demo command and final report/presentation/recording remain later milestones.

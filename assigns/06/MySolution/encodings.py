@@ -187,3 +187,16 @@ def not_equal(*, names: FreshNameGenerator | None = None) -> Lam:
     left, right = names.fresh("m"), names.fresh("n")
     equality = _apply(equal(names=names), Var(left), Var(right))
     return Lam(left, Lam(right, App(negation(names=names), equality)))
+
+
+def z_combinator(*, names: FreshNameGenerator | None = None) -> Lam:
+    """CBV Z = lam g. (lam x. g (lam v. x x v)) (lam x. g (lam v. x x v))."""
+    names = names if names is not None else FreshNameGenerator()
+    function = names.fresh("g")
+
+    def arm() -> Lam:
+        self_name, argument = names.fresh("x"), names.fresh("v")
+        delayed_call = Lam(argument, _apply(Var(self_name), Var(self_name), Var(argument)))
+        return Lam(self_name, App(Var(function), delayed_call))
+
+    return Lam(function, App(arm(), arm()))

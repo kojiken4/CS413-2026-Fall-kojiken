@@ -2,14 +2,15 @@
 
 ## Current status
 
-Steps 1–7 provide the Python package, source-AST adapter, immutable target terms,
+Steps 1–8 provide the Python package, source-AST adapter, immutable target terms,
 printing, name analysis, deterministic fresh names, capture-avoiding substitution,
 alpha-equivalence checking, and one shared evaluator for source and target
 programs. Church data, arithmetic, comparisons, boolean operations, pairs, and
-bounded scalar/nested-pair observation are implemented. Nonrecursive visitor
-compilation now connects source ASTs to target execution and observation, including
-delayed conditionals and short-circuit booleans. Z, fix compilation, and the demo
-remain pending. Passing these tests does not establish a proof of correctness.
+bounded scalar/nested-pair observation are implemented. Visitor compilation
+connects every required source form to target execution and observation, including
+delayed conditionals, short-circuit booleans, and recursion through CBV Z. The demo
+and final deliverables remain pending. Passing these tests does not establish a
+proof of correctness.
 
 The assignment is authoritative: [Assign06.md](../Assign06.md).
 [REQUIREMENTS.md](../REQUIREMENTS.md) provides the detailed requirement IDs.
@@ -49,6 +50,11 @@ operation tests and 14 pair-observation tests. All previous tests still pass.
 
 Step 7 verification on Python 3.14.7: all **181 tests passed**, adding 29 compiler
 tests and 5 source-helper tests. Existing suites remain unchanged.
+
+Step 8 verification on Python 3.14.7: all **198 tests passed**, adding 17 recursive
+compiler tests and extending library checks to Z. Compiled factorial of 4 returns
+24 and Fibonacci of 5 returns 5, matching source evaluation. Fix-based LOOP
+exhausts its target budget; skipped loops complete. No divergent source is run.
 
 The adapter requires the repository's existing `assigns/05/lambda1_vp.py` in
 its original relative location. It loads that exact file by location without
@@ -279,7 +285,7 @@ A recursive call first binds the function name to the same recursive closure,
 then binds the parameter to the argument. Adding the parameter last makes it
 shadow the function name when both names coincide. Creating either kind of
 closure does not evaluate its body. This implements built-in source recursion;
-the pure target Z encoding and recursive compilation are still planned for Step 8.
+the pure target Z encoding now supplies recursion without native target closures.
 
 Both languages share the evaluation loop, variable/application dispatch, value
 delivery, and continuation stack. Source frames add lets, conditionals, operators,
@@ -433,8 +439,8 @@ during observation. Pair observation extends this mechanism as described below.
 
 The compiler assembles translated programs from these closed operation
 builders. They give pure lambda programs arithmetic, comparisons, and structured
-data while keeping the evaluator independent of those meanings. Recursive
-translation remains for Step 8.
+data while keeping the evaluator independent of those meanings. The Z builder
+additionally supplies recursion, as explained in the compiler section below.
 
 All operation builders accept the same optional `names=` generator. The following
 notation abbreviates expanded pure ASTs; each multi-parameter expression is
@@ -550,7 +556,7 @@ completed 14
 4 ((2, True), 3) 27
 ```
 
-## Nonrecursive compilation
+## Compilation
 
 ### High-level purpose and entry point
 
@@ -622,6 +628,7 @@ abbreviations that are fully expanded into Var/Lam/App nodes in actual output.
 | `e1 or e2` | `D(C[e1], TRUE, C[e2])` |
 | `pair e1 e2` | `PAIR C[e1] C[e2]` |
 | `fst e`, `snd e` | `FST C[e]`, `SND C[e]` |
+| `fix f(x). e` | `Z (lam f. lam x. C[e])` |
 
 The let initializer is outside its name's binding, as required. Application,
 arithmetic, and pair construction retain left-to-right strictness through their
@@ -657,30 +664,103 @@ Expected output:
 7 7
 ```
 
-### Coverage and interim boundary
+### Call-by-value recursion
 
-`CompilationError` is importable from `compiler.py`. In Step 7, any source fix
-expression raises an explicit error that recursive translation is added in Step 8,
-including an unused fix expression. Validation still inspects fix bodies first,
-so unsupported literals/operators there are diagnosed. This intermediate boundary
-does not satisfy the final assignment's recursion requirement yet.
+The target has no recursive-definition node. Instead, `z_combinator()` builds
+the assignment's closed pure term, with deterministic fresh bound names:
+
+```text
+Z = lam g. (lam x. g (lam v. x x v)) (lam x. g (lam v. x x v))
+C[fix f(x). e] = Z (lam f. lam x. C[e])
+```
+
+The function `F = lam f. lam x. C[e]` receives its recursive function as `f`.
+Z gives F a delayed recursive call, `lam v. x x v`. This wrapper is already a
+value, so call-by-value can pass it to F without immediately unfolding recursion
+again. F then returns its argument-taking function. Only applying the wrapper
+to an actual argument resumes the recursive computation. The two copies of the
+Z arm use separate fresh binders and match the required term up to bound names.
+
+This is called a fixed-point combinator because it supplies a function with a
+way to call itself. Under CBV, Z's result behaves like F supplied with a delayed
+version of itself. Ordinary Y passes `x x` directly; CBV keeps trying to evaluate
+that self-application before F can return a function, even when F ignores recursion.
+Tests verify both behaviors with the same evaluator.
+
+Two separate delays matter for factorial: Z postpones the next recursive call
+until its argument arrives, while conditional thunks prevent the recursive
+branch from running when the base case is selected. Compiling a fix expression
+does not execute it. Evaluating its translation takes three beta-value steps
+to return a function without entering its body. Calling that function enters
+the body. Nested `lam f. lam x` also preserves the source rule that a parameter
+shadows the recursive name when both names coincide.
+
+Here is factorial built directly with the supplied source constructors:
+
+```python
+from MySolution.compiler import compile_expr
+from MySolution.evaluator import evaluate
+from MySolution.observers import observe
+from MySolution.source_ast import ast
+
+fact = ast.D0Efix("fact", "n", ast.D0Eif0(
+    ast.D0Eop2("==", ast.D0Evar("n"), ast.D0Eint(0)),
+    ast.D0Eint(1),
+    ast.D0Eop2("*", ast.D0Evar("n"), ast.D0Eapp(
+        ast.D0Evar("fact"), ast.D0Eop2("-", ast.D0Evar("n"), ast.D0Eint(1)),
+    )),
+))
+program = ast.D0Eapp(fact, ast.D0Eint(4))
+execution = evaluate(compile_expr(program), max_steps=100000)
+observation = observe(execution.value, "natural", max_steps=100000)
+print(evaluate(program).value.arg1, observation.value)
+print(execution.steps, observation.steps)
+```
+
+Expected output:
+
+```text
+24 24
+471 333
+```
+
+| Program | Source and observed target answer | Execution steps | Observation steps |
+| --- | --- | --- | --- |
+| Factorial 0 | 1 | 31 | 3 |
+| Factorial 4 | 24 | 471 | 333 |
+| Fibonacci 0 | 0 | 25 | 2 |
+| Fibonacci 1 | 1 | 37 | 3 |
+| Fibonacci 5 | 5 | 1794 | 45 |
+
+These counts use the current fully expanded terms and separate budgets of
+100,000 for execution and observation. They are measured reduction counts,
+not complexity bounds. Recursive test fixtures reuse the source evaluator's
+factorial, Fibonacci, and LOOP constructors; explicit answers independently
+check the source and compiled results.
+
+### Coverage and diagnostics
+
+`CompilationError` is importable from `compiler.py`. Every fix body is checked
+for unsupported syntax, including unapplied definitions and skipped branches.
 
 | Requirements | Current evidence |
 | --- | --- |
-| CMP-01, CMP-08 | Every nonrecursive constructor/operator; source and observed target results checked against explicit answers; fix translation pending |
-| CMP-02 | Visitor translation is compositional; arithmetic and nonrecursive self-application compile with evaluator entry points disabled |
+| CMP-01, CMP-08 | Every required constructor/operator, factorial, Fibonacci, and recursive pair results; source and observed target results checked against explicit answers |
+| CMP-02 | Visitor translation is compositional; arithmetic, recursive functions, and divergent programs compile with evaluator entry points disabled |
 | CMP-03 | Tests traverse output and require only exact Var/Lam/App node types; closed source examples produce closed terms |
-| CMP-04, CMP-05 | Let-initializer scope, nested shadowing, lexical functions, open forms, and free-variable equality; fix binding tests pending |
+| CMP-04, CMP-05 | Let-initializer scope, nested shadowing, recursive lexical scope, coincident fix binders, open forms, and free-variable equality |
 | CMP-06 | Deterministic repeated compilation, source snapshots, common encoding names, fresh thunk parameters against free and unused bound names |
 | CMP-07 | Negative/unsupported forms rejected in direct input, skipped branches, unapplied functions, short-circuit operands, and fix bodies |
-| QLT-01, QLT-02 | Supplied visitor dispatch verified; compiler imports neither evaluator nor observers; existing engine/encoding/observer modules unchanged |
+| QLT-01, QLT-02 | Supplied visitor dispatch verified; compiler imports neither evaluator nor observers; shared engine and observers unchanged by recursive compilation |
 
 `tests/test_compiler.py` supplies 29 tests and `tests/test_source_ops.py` supplies
-5. Before fix translation is available, divergence stress tests use nonrecursive
-self-application built from lambdas and applications. They check both skipped
-computations and selected/strict computations under target budgets. The required
-fix-based LOOP, factorial, and Fibonacci compilation tests remain for Step 8.
-No directly diverging source evaluation is run.
+5. `tests/test_recursive_compiler.py` adds 17 tests. Both nonrecursive
+self-application and the required fix-based LOOP check skipped computations and
+selected/strict computations under target budgets. Recursive tests additionally
+cover exact Z structure, Y versus Z, three-step function creation, both Fibonacci
+base cases, recursive binding and capture hazards, nested pairs, deterministic
+compilation, input preservation, and invalid unused recursive bodies. No directly
+diverging source evaluation is run.
 
 ## Architecture
 
@@ -690,11 +770,11 @@ No directly diverging source evaluation is run.
 | Source helpers | `source_ops.py` | Source printing, full syntax validation, all-name collection | Implemented |
 | Target terms and operations | `target.py` | Immutable `Var`, `Lam`, `App`; printing, names, substitution, alpha-equivalence | Implemented |
 | Shared evaluator | `evaluator.py` | Execute source and target syntax through one engine | Implemented |
-| Church encodings | `encodings.py` | Construct closed pure terms for data and operations | All required data/operations implemented; Z pending |
-| Compiler | `compiler.py` | Translate using `D0ExpVisitor`; never evaluate input | Nonrecursive forms implemented; fix pending |
+| Church encodings | `encodings.py` | Construct closed pure terms for data, operations, and recursion | All required builders implemented, including Z |
+| Compiler | `compiler.py` | Translate using `D0ExpVisitor`; never evaluate input | All required source forms implemented |
 | Observers | `observers.py` | Decode expected data kinds through bounded target contexts | Natural, boolean, and nested pairs implemented |
 | Demonstrations | `demo.py` | Run and report the required end-to-end examples | Planned |
-| Tests | `tests/` | Existing component tests plus source helpers and nonrecursive compiler pipeline | In progress |
+| Tests | `tests/` | Component tests, source helpers, and full compiler pipeline | 198 tests pass; demo acceptance checks remain |
 
 The intended pipeline is:
 
@@ -734,7 +814,7 @@ terms and reports open inputs clearly.
 ## Commands and deliverables still pending
 
 The planned demo command is `python -B -m MySolution.demo`. It is **not available
-in Step 7**. A later milestone will add its exact options and output details.
+in Step 8**. Step 9 will add its exact options and output details.
 
 `DESIGN.md`, PDF presentation slides, and the 15–20 minute face-visible recording
 are pending. Their actual files or recording link will be identified here when
@@ -771,6 +851,7 @@ uses the distinct closed-marker approach permitted by the assignment.
 The pair-state predecessor and derived operation definitions are constructed
 from the assignment's Church numerals, booleans, and required pair representation.
 They are explained above and tested through reduction; no external encoding
-implementation was copied. The required Z builder remains for Step 8.
+implementation was copied. The Z builder and fix translation follow the exact
+rules supplied in Assignment 6 Tasks 2 and 3, using fresh bound names.
 
 See [AI-TRANSCRIPT.md](AI-TRANSCRIPT.md) for AI assistance and verification.

@@ -1,7 +1,7 @@
 """Compositional visitor compilation from source ASTs into pure lambda terms.
 
-No evaluator or observer is imported. Recursive fix translation follows in Step 8;
-every other required constructor/operator is supported here.
+No evaluator or observer is imported. All required source constructors/operators
+translate compositionally, including recursive definitions through CBV Z.
 """
 
 from . import encodings as church
@@ -82,7 +82,9 @@ class _CompileVisitor(ast.D0ExpVisitor[Term]):
         return App(church.second(names=self.names), operand)
 
     def visit_fix(self, expression: ast.D0Efix) -> Term:
-        raise CompilationError("recursive fix compilation is added in Step 8; unavailable in Step 7")
+        body = expression.arg3.accept(self)
+        function = Lam(expression.arg1, Lam(expression.arg2, body))
+        return App(church.z_combinator(names=self.names), function)
 
 
 def compile_expr(source_expression: ast.d0exp) -> Term:
