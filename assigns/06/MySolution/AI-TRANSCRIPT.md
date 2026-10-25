@@ -50,8 +50,8 @@ I asked Codex to carry out the following work in separately reviewable steps:
 5. **Step 3:** Add bounded weak call-by-value target evaluation, precise step
    counts, completion/exhaustion results, tests, and updated documentation. Keep
    the engine ready for source cases in the next milestone and pause afterward.
-6. **Step 4:** Proceed to implementing source evaluation and then requesting manual
-   review.
+6. **Step 4:** Implement source evaluation, explain the milestone’s purpose 
+   within the project, and pause for manual review.
    milestone's overarching purpose and how it contributes to the whole assignment.
 7. **Step 5:** Add basic Church values and bounded scalar observation with tests
    and documentation, then stop at the review/commit checkpoint.
