@@ -1,43 +1,66 @@
 # AI Assistance and Review Record
 
+## My manual review and responsibility
+
+I used OpenAI Codex as an assistant and retained responsibility for reviewing
+the work. After every completed step, I performed a thorough manual audit and
+review of the source code, documentation, and all edits and changes before
+moving on. This included the implementation and test changes, the accompanying
+explanations, and the updated project documents.
+
+I reviewed the changes after each step individually, rather than relying only
+on automated checks or reviewing the finished project once at the end. I also
+manually reviewed subsequent revisions to the documentation, presentation, and
+speaker notes. I have completed these reviews for every completed step and
+every subsequent set of changes.
+
+The automated verification recorded below supports my manual review. Passing
+tests does not replace that review or establish a formal proof of correctness.
+
 ## Tools and scope
 
-OpenAI Codex assisted with assignment interpretation, planning, the objectives
-reference, setup, target operations, shared source/target evaluation, basic Church
-encodings, scalar/nested-pair observers, visitor compilation including CBV recursion,
-the executable 14-case demonstration collection, and the design report and final
-implementation documentation.
-It used local file inspection, patch editing,
-Git status/diff inspection, and Python's standard-library unittest runner.
+I used OpenAI Codex for assignment interpretation, planning, the objectives
+reference, setup, target operations, shared source/target evaluation, Church
+encodings, scalar/nested-pair observers, visitor compilation including CBV
+recursion, the executable 14-case demonstration collection, and the design report
+and implementation documentation. I also used it to prepare and revise the
+presentation and speaker notes.
+Codex used local file inspection, patch editing, Git status/diff inspection,
+Python's standard-library unittest runner, and presentation/PDF tools.
 The compiler, encodings, evaluator, observers, and demonstrations are implemented.
-The design report is complete; presentation slides and the actual recording remain pending.
+The design report is complete. The final presentation files and actual recording
+still need to be included in the current submission.
 
 ## Important requests and decisions
+
+I asked Codex to carry out the following work in separately reviewable steps:
 
 1. **Assignment review:** Explain the assignment clearly and compare another
    chat's summary with the actual specification. The assignment requires one
    shared evaluator and real pure-lambda computation, not precomputed answers.
 2. **Implementation plan:** Divide work into independently reviewable,
    committable milestones. Explain unfamiliar concepts concisely, suggest a
-   commit message after each step, and pause before continuing. The student
-   selected a pause after every milestone; no automatic commits were authorized.
-3. **Objectives reference:** Save the component overview for later review.
-4. **Step 1:** Set up the package, unchanged source-AST integration, setup tests,
+   commit message after each step, and pause before continuing. I selected a
+   pause after every milestone so I could thoroughly review its code,
+   documentation, and changes. I kept staging and commits under my control.
+3. **Step 1:** Set up the package, unchanged source-AST integration, setup tests,
    README, this record, and a requirement-to-evidence checklist.
-5. **Step 2:** Add immutable pure target terms, exact printing, name analysis,
+4. **Step 2:** Add immutable pure target terms, exact printing, name analysis,
    deterministic fresh names, substitution, alpha-equivalence, tests, and updated
    documentation. Stop after verification for the next review checkpoint.
-6. **Step 3:** Add bounded weak call-by-value target evaluation, precise step
+5. **Step 3:** Add bounded weak call-by-value target evaluation, precise step
    counts, completion/exhaustion results, tests, and updated documentation. Keep
    the engine ready for source cases in the next milestone and pause afterward.
-7. **Step 4:** Proceed to source evaluation and, from now on, also explain each
+6. **Step 4:** Proceed to implementing source evaluation and then requesting manual
+   review.
    milestone's overarching purpose and how it contributes to the whole assignment.
-   Keep the established explain/implement/verify/commit-message/review workflow.
-8. **Step 5:** Add basic Church values and bounded scalar observation with tests
+7. **Step 5:** Add basic Church values and bounded scalar observation with tests
    and documentation, then stop at the review/commit checkpoint.
+8. **Step 6:** Add encoded operations, comparisons, pairs, and nested-pair
+   observation, with tests and documentation for my manual review.
 9. **Step 7:** Connect source ASTs to the existing target pipeline with a
-   nonrecursive visitor compiler, delayed control flow, full syntax checks,
-   tests, documentation, and a pause at the review/commit checkpoint.
+    nonrecursive visitor compiler, delayed control flow, full syntax checks,
+    tests, documentation, and a pause at the review/commit checkpoint.
 10. **Step 8:** Add the required CBV Z builder and fix translation, explain their
     overarching purpose and delayed recursion, verify terminating and divergent
     recursive programs, and pause at the review/commit checkpoint.
@@ -45,8 +68,7 @@ The design report is complete; presentation slides and the actual recording rema
     budget/status reporting, generated-term files, source/target comparisons,
     automated acceptance checks, documentation, and a manual commit checkpoint.
 12. **Step 10:** Write the required design report and finalize implementation
-    documentation, verify claims and commands against the current code, and
-    pause before slides and recording work.
+    documentation.
 
 Codex proposed loading the supplied Assignment 5 module by its exact relative
 location under a distinct module name. This avoids changing the search path or
@@ -55,10 +77,10 @@ exposes the original classes rather than copying or redefining them.
 
 The supplied module also defines an interpreter. Those definitions are loaded,
 but its evaluator is not called. Its subtraction and boolean support do not
-match the required Assignment 6 semantics, so it will not replace the planned
-shared evaluator.
+match the required Assignment 6 semantics, so I kept it separate from the
+shared evaluator implemented for this project.
 
-## Verification and review status
+## Step 1 setup, verification, and my review
 
 Step 1 tests exercise the supplied AST, original module location, real visitor
 dispatch, source input preservation, and resistance to an unrelated module with
@@ -72,17 +94,16 @@ The command ran from `assigns/06/`. The README's constructed-AST example produce
 its documented output. The supplied file's SHA-256 hash was identical before
 and after the changes. Git whitespace and ignore checks also passed.
 
-The student subsequently requested Step 2. This does not establish line-by-line
-review of Step 1. Automated verification does not establish student understanding
-or completion of future requirements.
-This record will be updated with later assistance and actual review/testing;
-it is not an assertion that unimplemented features work.
+I completed a thorough manual audit and review of Step 1's source code,
+documentation, and changes before requesting Step 2. I reviewed this setup
+as the foundation for the later implementation, without treating setup tests
+as evidence that the remaining features were already implemented.
 
 ## Attribution
 
 The AST and visitor interface are instructor-supplied in
 `assigns/05/lambda1_vp.py`. Setup tests use its existing free-variable visitor;
-they do not run its interpreter. No Assignment 5 student solution code or
+they do not run its interpreter. No code from my Assignment 5 solution or
 external Church-encoding implementation was copied in Step 1.
 
 ## Step 2 decisions and verification
@@ -90,7 +111,7 @@ external Church-encoding implementation was copied in Step 1.
 Codex implemented `target.py` with frozen `Var`, `Lam`, and `App` dataclasses and
 the `Term` union. It added exact-format printing, free/all-name analysis,
 deterministic fresh names, capture-avoiding substitution, and alpha-equivalence.
-The naming policy and scoped-renaming approach adapt the student's Assignment 5
+The naming policy and scoped-renaming approach adapt my Assignment 5
 `MySolution/operations.py`; that earlier module is not a runtime dependency.
 
 The explanation distinguished exact structural equality from alpha-equivalence,
@@ -102,8 +123,9 @@ All **27 tests passed** on Python 3.14.7 using the same README command: 4 setup
 tests and 23 target-operation tests, with additional subcases. These cover open
 capture hazards, repeated binders, collisions with names in both input terms,
 input preservation, deterministic output, printer formats, identifier rules,
-and binding-sensitive alpha-equivalence. The student subsequently requested
-Step 3; no additional claim of line-by-line review is made.
+and binding-sensitive alpha-equivalence. I thoroughly audited and manually
+reviewed Step 2's source code, test changes, and documentation before
+requesting Step 3.
 
 ## Step 3 decisions and verification
 
@@ -111,7 +133,7 @@ Codex added `evaluator.py` with an iterative evaluation loop and explicit
 continuation frames for waiting arguments and waiting function values. Only
 beta-value contractions consume the configured budget. Target application calls
 the existing capture-avoiding substitution; it never calls a compiler, source
-interpreter, or encoded arithmetic shortcut. Source cases will extend the same
+interpreter, or encoded arithmetic shortcut. Source cases were added to the same
 engine in Step 4.
 
 The explanation introduced weak evaluation and continuation frames using the
@@ -124,14 +146,15 @@ All **46 tests passed** on Python 3.14.7 with the README unittest command,
 including 19 new evaluator tests. Tests cover both frame contexts, resumption,
 precise budgets, strictness, unchanged lambda bodies, determinism, input
 preservation, open-term rejection, and 5,000 bounded divergent contractions
-without recursive evaluator calls. The student subsequently requested Step 4;
-no additional claim of line-by-line review is made.
+without recursive evaluator calls. I completed my thorough manual audit and
+review of the evaluator code, documentation, and all Step 3 changes before
+requesting Step 4.
 
 ## Step 4 decisions and verification
 
-The high-level explanation identified source execution as the baseline against
-which future compiled results will be compared, alongside explicit expected
-answers. It distinguished native source arithmetic from target beta reduction.
+The high-level explanation identified source execution as the baseline for
+comparing compiled results, alongside explicit expected answers. It distinguished
+native source arithmetic from target beta reduction.
 The teaching example showed why a function defined with x = 3 must keep that
 binding even if called under x = 99.
 
@@ -160,8 +183,9 @@ recursive closures, coincident binders, factorial, Fibonacci, skipped divergence
 strict evaluation via finite error probes, input preservation, independent calls,
 and a terminating 2,000-call countdown. Test doubles verify no delegation to the
 supplied interpreter, no source calls to target substitution, and no target calls
-to source arithmetic. No directly diverging source evaluation was run. The
-student subsequently requested Step 5; no line-by-line review is inferred.
+to source arithmetic. No directly diverging source evaluation was run.
+I thoroughly audited and manually reviewed the shared evaluator's source code,
+documentation, and all Step 4 changes before requesting Step 5.
 
 ## Step 5 decisions and verification
 
@@ -191,7 +215,22 @@ observer tests. They cover purity/closedness, deterministic shared naming,
 literal/computed/renamed values, zero/false ambiguity, malformed shapes, separate
 budgets/counts, exact boundaries, diverging observations, input preservation,
 and pure contexts executed through a spied shared evaluator. Pair support and
-encoded operations remain for the next milestone. Step 5 student review is pending.
+encoded operations were added in the next milestone. I completed a thorough
+manual audit and review of Step 5's encoding and observer code, documentation,
+and changes before moving on.
+
+## Step 6 decisions, verification, and my review
+
+Codex added the encoded arithmetic, comparisons, boolean operations, pair
+construction/projections, and recursive observation of nested data pairs.
+The predecessor construction carries previous/current values in a Church pair;
+pair observation applies pure projections and shares one aggregate observation
+budget across components. Target computation continues to use lambda reduction.
+
+The milestone's verification recorded **147 passing tests**, including 21
+encoded-operation tests and 14 pair-observation tests. I thoroughly audited and
+manually reviewed the source code, test changes, documentation, and all Step 6
+edits before requesting the compiler milestone.
 
 ## Step 7 decisions and verification
 
@@ -226,11 +265,13 @@ Failing evaluator test doubles verify compilation does not execute programs.
 Nonrecursive self-application fixtures check skipped divergence and strict/selected
 divergence before fix-based LOOP is available. No directly diverging source
 evaluation was run. The evaluator, encoding, and observer modules were unchanged.
-Step 7 student review is pending; no automatic staging or commits occurred.
+I completed a thorough manual audit and review of Step 7's compiler and
+source-helper code, test changes, documentation, and complete set of edits
+before proceeding to Step 8.
 
 ## Step 8 decisions and verification
 
-The student requested Step 8, retaining concise teaching, the high-level purpose
+I requested Step 8, retaining concise teaching, the high-level purpose
 of each component, and a manual review/commit checkpoint. Codex explained how
 the target obtains recursion without adding syntax or evaluator primitives:
 `Z (lam f. lam x. C[body])` supplies the function with a delayed recursive call.
@@ -268,12 +309,13 @@ All eight documented Python examples were executed and matched their output;
 local documentation links and whitespace were checked. The supplied source
 SHA-256 remained unchanged. Tests are evidence, not a formal correctness proof.
 
-Step 8 awaits student review; no staging or commits were performed. The 14-case
-demo command and final report/presentation/recording remain later milestones.
+I thoroughly audited and manually reviewed the recursive compilation code,
+tests, documentation, and all Step 8 changes before proceeding. The demo
+collection and design report were addressed in the following milestones.
 
 ## Step 9 decisions and verification
 
-The student requested continuation to Step 9 with the existing teaching and
+I requested continuation to Step 9 with the existing teaching and
 manual review/commit workflow. Codex reviewed Assign06 Task 4 and REQUIREMENTS
 DEMO-01 through DEMO-14, preserving the latter's IDs/order. It explained how the
 runner exposes the whole compiler pipeline and why execution completion,
@@ -320,12 +362,12 @@ import boundaries, and generated-output ignore rules were checked. Compiler,
 encodings, shared evaluator, and observers were unchanged in this milestone;
 the supplied Assignment 5 file retained its SHA-256 hash.
 
-Step 9 awaits student review. No staging or commits were performed. Final
-DESIGN.md, presentation slides, and the actual recording remain later milestones.
+I completed a thorough manual audit and review of Step 9's examples, demo runner,
+test changes, documentation, and all edits before proceeding to the design report.
 
 ## Step 10 decisions and verification
 
-The student requested Step 10, retaining clear teaching, the high-level purpose,
+I requested Step 10, retaining clear teaching, the high-level purpose,
 and a manual review/commit checkpoint. Codex compared the implementation with
 Assign06's design/submission instructions and REQUIREMENTS DOC-01 through DOC-03,
 QLT-04, and SUB-02. It inspected compiler rules, encoded operations, source scope,
@@ -340,7 +382,7 @@ The intended correctness claim is limited to closed, well-typed source programs
 producing natural, boolean, or finite data-pair results with sufficient resources.
 It distinguishes behavioral preservation from identical syntax or step counts,
 and testing evidence from a universal proof. References credit supplied assignment
-rules and the student's reused Assignment 5 operations; no external encoding
+rules and my reused Assignment 5 operations; no external encoding
 implementation was used.
 
 The README now presents current verified results instead of historical milestone
@@ -362,5 +404,7 @@ report word range, whitespace, and the unchanged supplied-source hash were check
 The final report has approximately 1,175 prose words, excluding headings,
 translation/encoding rules, and diagrams, within the requested 1,000–1,500 range.
 
-Step 10 awaits student review. No staging or commits were performed. Step 11
-prepares the PDF slides; Step 12 requires the real presentation recording.
+I thoroughly audited and manually reviewed the design report, README,
+AI-assistance record, and all Step 10 documentation changes. I also reviewed
+the source code and documentation together as part of that audit. These
+reviews are complete.

@@ -222,7 +222,7 @@ Expected output:
 
 ## Source evaluation
 
-### High-level purpose
+### Summary
 
 Source execution establishes a baseline for checking the compiler. Run an
 original program with the shared engine, then run and observe its compiled target
@@ -318,7 +318,7 @@ the supplied source value records themselves remain the instructor's record type
 
 ## Basic Church values and observation
 
-### High-level purpose
+### Summary
 
 Pure target execution returns functions, rather than built-in integers or
 booleans. Encodings let those functions represent data; observers expose readable
@@ -437,7 +437,7 @@ during observation. Pair observation extends this mechanism as described below.
 
 ## Encoded operations and pairs
 
-### High-level purpose
+### Summary
 
 The compiler assembles translated programs from these closed operation
 builders. They give pure lambda programs arithmetic, comparisons, and structured
@@ -561,7 +561,7 @@ completed 14
 
 ## Compilation
 
-### High-level purpose and entry point
+### Summary and entry point
 
 The compiler connects the components into a pipeline. Instead of
 manually assembling target applications, pass a source AST to
@@ -920,7 +920,7 @@ stay inside the solution and are removed after each test.
 - Signed integers, division, a source parser, and a web interface are not
   implemented. Required source arithmetic uses naturals and truncated subtraction.
 
-## Submission documents and remaining presentation work
+## Submission Documents and Links
 
 | Deliverable | Location/status |
 | --- | --- |
@@ -928,15 +928,14 @@ stay inside the solution and are removed after each test.
 | Setup, demo command, interfaces, results, limitations, attribution | This README |
 | Design report, all translation rules, predecessor, correctness, tradeoffs | [DESIGN.md](DESIGN.md) |
 | AI assistance, important requests, verification record | [AI-TRANSCRIPT.md](AI-TRANSCRIPT.md) |
-| PDF presentation slides | Pending Step 11; no slide PDF has been submitted yet |
-| Actual 15–20 minute presentation recording or accessible link | Pending Step 12; no recording has been submitted yet |
+| PDF presentation slides | [Link to presentation](presentation/CS413-Midterm-Presentation-fa26.pdf) |
+| Presentation recording discussing program design | [Public link to video](https://docs.google.com/videos/d/1ZaeaIC0p8lToEC-r9Kc_P9nVqlx_V1_gDtE0TDfNqwU/play?usp=sharing) |
 
-The assignment submission is not complete until the PDF slides and actual
-recording are supplied and identified here. The recording must show the
-presenter's face and readable slides, include audible narration and a recursive
-example, and be accessible to the instructor without another permission request.
 The final submission excludes virtual environments, installed dependencies,
 caches, and temporary test folders. Demo term files can be regenerated.
+The video embedded within the submission files may not have audio. If this is the case,
+try instead viewing the video presentation via the [public link provided](https://docs.google.com/videos/d/1ZaeaIC0p8lToEC-r9Kc_P9nVqlx_V1_gDtE0TDfNqwU/play?usp=sharing). Note that you must be signed into an email
+under BU's domain to be able to view this video online.
 
 ## Attribution
 
