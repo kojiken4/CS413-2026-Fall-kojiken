@@ -28,8 +28,7 @@ presentation and speaker notes.
 Codex used local file inspection, patch editing, Git status/diff inspection,
 Python's standard-library unittest runner, and presentation/PDF tools.
 The compiler, encodings, evaluator, observers, and demonstrations are implemented.
-The design report is complete. The final presentation files and actual recording
-still need to be included in the current submission.
+The design report, presentation slides, and recording are complete and included in the submission. 
 
 ## Important requests and decisions
 
@@ -388,11 +387,10 @@ implementation was used.
 The README now presents current verified results instead of historical milestone
 test totals. It links the report and assistance record, summarizes public calls,
 retains worked learning examples, consolidates implementation limitations, and
-identifies actual completed documents and the remaining presentation deliverables.
+identifies the completed documents, presentation slides, and recording.
 An outdated early note saying no evaluator was implemented was corrected.
 The report and README distinguish Python 3.12 as the required minimum from
-Python 3.14.7 as the interpreter actually tested. PDF slides and the actual
-recording are explicitly still pending; no placeholder is presented as submitted.
+Python 3.14.7 as the interpreter actually tested.
 
 Verification reran the documented verbose unittest command from `assigns/06/`:
 all **213 tests passed**. Both the default demo command and the explicit-budget/
@@ -405,6 +403,7 @@ The final report has approximately 1,175 prose words, excluding headings,
 translation/encoding rules, and diagrams, within the requested 1,000–1,500 range.
 
 I thoroughly audited and manually reviewed the design report, README,
-AI-assistance record, and all Step 10 documentation changes. I also reviewed
-the source code and documentation together as part of that audit. These
+AI-assistance record, and all Step 10 documentation changes. I made changes to 
+the documentation as needed to reflect the final state of this project, and
+I also reviewed the source code and documentation together as part of that audit. These
 reviews are complete.

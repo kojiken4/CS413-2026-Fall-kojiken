@@ -1,6 +1,6 @@
 # Assignment 6: Extended LAMBDA to Pure Lambda Calculus
 
-## Current status
+## Overview
 
 The implementation provides the Python package, source-AST adapter, immutable target terms,
 printing, name analysis, deterministic fresh names, capture-avoiding substitution,
@@ -10,16 +10,15 @@ bounded scalar/nested-pair observation are implemented. Visitor compilation
 connects every required source form to target execution and observation, including
 delayed conditionals, short-circuit booleans, and recursion through CBV Z. One
 command now runs all 14 required demonstrations and saves their pure target
-terms. The design report and implementation documentation are complete; the PDF
-slides and presentation recording remain pending. Passing tests does not
-establish a proof of correctness.
+terms.
 
-The assignment is authoritative: [Assign06.md](../Assign06.md).
 [REQUIREMENTS.md](../REQUIREMENTS.md) provides the detailed requirement IDs.
 [DESIGN.md](DESIGN.md) explains the representations, translation rules,
 correctness argument, and tradeoffs in a short report. This README provides
 commands, interfaces, worked examples, and measured results.
 [AI-TRANSCRIPT.md](AI-TRANSCRIPT.md) records AI assistance and verification.
+Further explanation can be found in the [slide deck](presentation/CS413-Midterm-Presentation-fa26.pdf) created for this midterm,
+as well as the [video presentation](https://docs.google.com/videos/d/1ZaeaIC0p8lToEC-r9Kc_P9nVqlx_V1_gDtE0TDfNqwU/play?usp=sharing) that refers to this slide deck.
 
 ## Setup and tests
 

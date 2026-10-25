@@ -205,4 +205,4 @@ Naming, scoped renaming, and source-printing traversal adapt the student's
 derived operations are constructed from the assignment's representations; no
 external encoding implementation was copied. [AI-TRANSCRIPT.md](AI-TRANSCRIPT.md)
 records Codex assistance and verification. [README.md](README.md) provides commands,
-measured results, and the remaining presentation deliverables.
+measured results, and the presentation deliverables in the attached [slide deck](presentation/CS413-Midterm-Presentation-fa26.pdf) and [video link](https://docs.google.com/videos/d/1ZaeaIC0p8lToEC-r9Kc_P9nVqlx_V1_gDtE0TDfNqwU/play?usp=sharing).
