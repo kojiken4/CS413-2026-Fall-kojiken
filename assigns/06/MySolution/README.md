@@ -18,7 +18,7 @@ correctness argument, and tradeoffs in a short report. This README provides
 commands, interfaces, worked examples, and measured results.
 [AI-TRANSCRIPT.md](AI-TRANSCRIPT.md) records AI assistance and verification.
 Further explanation can be found in the [slide deck](presentation/CS413-Midterm-Presentation-fa26.pdf) created for this midterm,
-as well as the [video presentation](https://docs.google.com/videos/d/1ZaeaIC0p8lToEC-r9Kc_P9nVqlx_V1_gDtE0TDfNqwU/play?usp=sharing) that refers to this slide deck.
+as well as the [video presentation](https://docs.google.com/videos/d/1OOeFozjGlZWAsqtMKme9hC88oLxhoKIlEF5Wg2dz03E/play?usp=sharing) that refers to this slide deck.
 
 ## Setup and tests
 
@@ -928,12 +928,12 @@ stay inside the solution and are removed after each test.
 | Design report, all translation rules, predecessor, correctness, tradeoffs | [DESIGN.md](DESIGN.md) |
 | AI assistance, important requests, verification record | [AI-TRANSCRIPT.md](AI-TRANSCRIPT.md) |
 | PDF presentation slides | [Link to presentation](presentation/CS413-Midterm-Presentation-fa26.pdf) |
-| Presentation recording discussing program design | [Public link to video](https://docs.google.com/videos/d/1ZaeaIC0p8lToEC-r9Kc_P9nVqlx_V1_gDtE0TDfNqwU/play?usp=sharing) |
+| Presentation recording discussing program design | [Public link to video](https://docs.google.com/videos/d/1OOeFozjGlZWAsqtMKme9hC88oLxhoKIlEF5Wg2dz03E/play?usp=sharing) |
 
 The final submission excludes virtual environments, installed dependencies,
 caches, and temporary test folders. Demo term files can be regenerated.
 The video embedded within the submission files may not have audio. If this is the case,
-try instead viewing the video presentation via the [public link provided](https://docs.google.com/videos/d/1ZaeaIC0p8lToEC-r9Kc_P9nVqlx_V1_gDtE0TDfNqwU/play?usp=sharing). Note that you must be signed into an email
+try instead viewing the video presentation via the [public link provided](https://docs.google.com/videos/d/1OOeFozjGlZWAsqtMKme9hC88oLxhoKIlEF5Wg2dz03E/play?usp=sharing). Note that you must be signed into an email
 under BU's domain to be able to view this video online.
 
 ## Attribution
