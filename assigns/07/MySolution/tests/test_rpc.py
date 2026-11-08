@@ -3,7 +3,7 @@
 import unittest
 from unittest.mock import patch
 
-from MySolution.lambda_rpc import dispatcher, http
+from MySolution.lambda_rpc import dispatcher, http, service
 
 
 def health_call(**overrides):
@@ -31,17 +31,94 @@ class RpcHttpTests(unittest.TestCase):
         self.assertIsInstance(body["error"]["message"], str)
         return body["error"]
 
+    def assert_rpc_result(self, response, request_id, result):
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.mimetype, "application/json")
+        self.assertEqual(response.get_json(), {
+            "jsonrpc": "2.0", "id": request_id, "result": result,
+        })
+
+    def call(self, method, params):
+        return self.client.post("/rpc", json={
+            "jsonrpc": "2.0", "method": method, "params": params, "id": "source",
+        })
+
     def test_health_preserves_call_ids(self):
         for request_id in ("health", 0, 1.25, None):
             with self.subTest(request_id=request_id):
                 response = self.client.post("/rpc", json=health_call(id=request_id))
-                self.assertEqual(response.status_code, 200)
-                self.assertEqual(response.mimetype, "application/json")
-                self.assertEqual(response.get_json(), {
-                    "jsonrpc": "2.0",
-                    "id": request_id,
-                    "result": {"status": "ok", "version": "1.0"},
+                self.assert_rpc_result(response, request_id, {"status": "ok", "version": "1.0"})
+
+    def test_typecheck_returns_formatted_types(self):
+        for source, inferred_type in (("1 + 2", "sint"), ("(1, true)", "(sint, bool)")):
+            with self.subTest(source=source):
+                response = self.call("lambda.typecheck", {"source": source})
+                self.assert_rpc_result(response, "source", {"type": inferred_type})
+
+    def test_typecheck_rejects_unbound_variable(self):
+        response = self.call("lambda.typecheck", {"source": "missing"})
+        error = self.assert_rpc_error(response, "source", -32011)
+        self.assertEqual(error["message"], "unbound variable 'missing'")
+
+    def test_language_syntax_and_type_errors(self):
+        for method, extra in (
+            ("lambda.typecheck", {}),
+            ("lambda.compile", {"target": "python"}),
+            ("lambda.compile", {"target": "javascript"}),
+        ):
+            with self.subTest(method=method, target=extra.get("target")):
+                response = self.call(method, {"source": "if then"} | extra)
+                error = self.assert_rpc_error(response, "source", -32010)
+                self.assertEqual(error, {
+                    "code": -32010,
+                    "message": "Expected an expression",
+                    "data": {"line": 1, "column": 4},
                 })
+                response = self.call(method, {"source": "1 + true"} | extra)
+                error = self.assert_rpc_error(response, "source", -32011)
+                self.assertEqual(error, {"code": -32011, "message": "+: expected bool, got sint"})
+
+    def test_compile_returns_both_compilers_output_unchanged(self):
+        source = "1 + 2"
+        expression, _ = service.lambda3.d0exp_parse_and_typecheck(source)
+        for target, compiler in (
+            ("python", service.lambda3.d0exp_compile),
+            ("javascript", service.lambda3.d0exp_compile_js),
+        ):
+            with self.subTest(target=target):
+                response = self.call("lambda.compile", {"source": source, "target": target})
+                code = compiler(expression)
+                self.assertTrue(code.strip())
+                self.assert_rpc_result(response, "source", {"target": target, "code": code})
+
+    def test_source_parameter_validation_for_both_methods(self):
+        for method, extra in (
+            ("lambda.typecheck", {}),
+            ("lambda.compile", {"target": "python"}),
+        ):
+            for params in ({}, {"source": 42}, {"source": ""}, {"source": " \t\n"}, {"source": "\ud800"}):
+                with self.subTest(method=method, params=params):
+                    response = self.call(method, params | extra)
+                    self.assert_rpc_error(response, "source", -32602)
+
+    def test_source_limit_counts_utf8_bytes(self):
+        # "42 #" is four bytes and each following comment character is two.
+        limit_source = "42 #" + "\u00e9" * 8_190
+        response = self.call("lambda.typecheck", {"source": limit_source})
+        self.assert_rpc_result(response, "source", {"type": "sint"})
+        for method, extra in (
+            ("lambda.typecheck", {}),
+            ("lambda.compile", {"target": "python"}),
+        ):
+            with self.subTest(method=method):
+                response = self.call(method, {"source": limit_source + "x"} | extra)
+                self.assert_rpc_error(response, "source", -32602)
+
+    def test_compile_validates_target(self):
+        for extra in ({}, {"target": []}, {"target": "Python"}, {"target": "ruby"}):
+            with self.subTest(extra=extra):
+                response = self.call("lambda.compile", {"source": "42"} | extra)
+                self.assert_rpc_error(response, "source", -32602)
 
     def test_unsupported_media_type_is_a_transport_error(self):
         for content_type in (None, "text/plain", "application/problem+json"):
