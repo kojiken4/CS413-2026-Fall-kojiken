@@ -24,6 +24,7 @@ def create_app() -> Flask:
     methods = {
         "service.health": health,
         "lambda.typecheck": service.typecheck,
+        "lambda.interpret": service.interpret,
         "lambda.compile": service.compile_source,
     }
 

@@ -54,7 +54,8 @@ unsupported targets are Invalid Params errors for calls.
 Each interpretation has a **2-second deadline** that covers the worker startup,
 parsing, type-checking, evaluation, and formatting. The server terminates the
 worker if the deadline expires. A timeout reports deadline expiry and cannot
-determine whether the program would eventually finish.
+determine whether the program would eventually finish. The worker discards
+LAMBDA3 `print` output and returns the formatted result.
 
 ## RPC errors
 

@@ -1,5 +1,7 @@
 """Adapt the supplied LAMBDA3 implementation to the RPC method contract."""
 
+import json
+import subprocess
 import sys
 from importlib import import_module
 from pathlib import Path
@@ -12,6 +14,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "LAMBDA3"))
 lambda3 = import_module("lambda3")
 
 MAX_SOURCE_BYTES = 16_384
+INTERPRET_TIMEOUT_SECONDS = 2
+WORKER_COMMAND = (sys.executable, "-B", "-m", "lambda_rpc.worker")
 COMPILERS = {
     "python": lambda3.d0exp_compile,
     "javascript": lambda3.d0exp_compile_js,
@@ -55,3 +59,31 @@ def compile_source(params: dict) -> dict:
         raise RpcError(-32602, "Invalid params")
     expression, _ = parse_and_typecheck(source)
     return {"target": target, "code": COMPILERS[target](expression)}
+
+
+def interpret(params: dict) -> dict:
+    source = validated_source(params)
+    try:
+        completed = subprocess.run(
+            WORKER_COMMAND,
+            cwd=Path(__file__).resolve().parents[1],
+            input=source.encode("utf-8"),
+            capture_output=True,
+            timeout=INTERPRET_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired as error:
+        raise RpcError(-32012, "Interpretation timed out") from error
+
+    if completed.returncode != 0:
+        diagnostic = completed.stderr.decode("utf-8", errors="replace").strip()
+        raise RuntimeError(
+            f"Interpretation worker exited with status {completed.returncode}: {diagnostic}"
+        )
+
+    match json.loads(completed.stdout):
+        case {"result": {"type": str() as inferred_type, "value": str() as value}}:
+            return {"type": inferred_type, "value": value}
+        case {"error": {"code": (-32010 | -32011) as code, "message": str() as message, "data": data}}:
+            if data is None or isinstance(data, dict):
+                raise RpcError(code, message, data)
+    raise RuntimeError("Invalid interpretation worker reply")

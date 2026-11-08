@@ -1,9 +1,15 @@
 """HTTP tests for the JSON-RPC transport and dispatcher."""
 
+import subprocess
+import sys
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 from MySolution.lambda_rpc import dispatcher, http, service
+
+
+LAMBDA3_DIR = Path(__file__).resolve().parents[2] / "LAMBDA3"
 
 
 def health_call(**overrides):
@@ -65,6 +71,7 @@ class RpcHttpTests(unittest.TestCase):
             ("lambda.typecheck", {}),
             ("lambda.compile", {"target": "python"}),
             ("lambda.compile", {"target": "javascript"}),
+            ("lambda.interpret", {}),
         ):
             with self.subTest(method=method, target=extra.get("target")):
                 response = self.call(method, {"source": "if then"} | extra)
@@ -91,10 +98,11 @@ class RpcHttpTests(unittest.TestCase):
                 self.assertTrue(code.strip())
                 self.assert_rpc_result(response, "source", {"target": target, "code": code})
 
-    def test_source_parameter_validation_for_both_methods(self):
+    def test_source_parameter_validation_for_language_methods(self):
         for method, extra in (
             ("lambda.typecheck", {}),
             ("lambda.compile", {"target": "python"}),
+            ("lambda.interpret", {}),
         ):
             for params in ({}, {"source": 42}, {"source": ""}, {"source": " \t\n"}, {"source": "\ud800"}):
                 with self.subTest(method=method, params=params):
@@ -109,6 +117,7 @@ class RpcHttpTests(unittest.TestCase):
         for method, extra in (
             ("lambda.typecheck", {}),
             ("lambda.compile", {"target": "python"}),
+            ("lambda.interpret", {}),
         ):
             with self.subTest(method=method):
                 response = self.call(method, {"source": limit_source + "x"} | extra)
@@ -119,6 +128,69 @@ class RpcHttpTests(unittest.TestCase):
             with self.subTest(extra=extra):
                 response = self.call("lambda.compile", {"source": "42"} | extra)
                 self.assert_rpc_error(response, "source", -32602)
+
+    def test_interpret_returns_formatted_values_and_types(self):
+        for source, inferred_type, value in (
+            ("6 * 7", "sint", "42"),
+            ("(1, true)", "(sint, bool)", "(1, true)"),
+            ("list_cons(1, list_cons(2, list_nil()))", "List[sint]", "[1, 2]"),
+            ("lam (x: sint) => x", "sint -> sint", "<lam>"),
+            ("print(42)", "unit", "()"),
+        ):
+            with self.subTest(source=source):
+                response = self.call("lambda.interpret", {"source": source})
+                self.assert_rpc_result(response, "source", {"type": inferred_type, "value": value})
+
+    def test_interpret_factorial(self):
+        source = (LAMBDA3_DIR / "mytest" / "factorial.lam").read_text(encoding="utf-8")
+        response = self.call("lambda.interpret", {"source": source})
+        self.assert_rpc_result(response, "source", {
+            "type": "(sint, sint, sint, sint)", "value": "(1, 1, 120, 720)",
+        })
+
+    def test_interpret_uses_provided_list_library(self):
+        declarations = (LAMBDA3_DIR / "mylib" / "list.lam").read_text(encoding="utf-8")
+        source = f"let\n{declarations}\nin list_range(1, 4) end"
+        response = self.call("lambda.interpret", {"source": source})
+        self.assert_rpc_result(response, "source", {"type": "List[sint]", "value": "[1, 2, 3]"})
+
+    def test_interpret_timeout_stops_worker_and_allows_next_request(self):
+        processes = []
+        start_process = subprocess.Popen
+
+        def record_process(*args, **kwargs):
+            process = start_process(*args, **kwargs)
+            processes.append(process)
+            return process
+
+        slow_worker = (sys.executable, "-B", "-c", "import time; time.sleep(30)")
+        with patch.object(service, "WORKER_COMMAND", slow_worker):
+            with patch.object(subprocess, "Popen", side_effect=record_process):
+                response = self.call("lambda.interpret", {"source": "42"})
+
+        error = self.assert_rpc_error(response, "source", -32012)
+        self.assertEqual(error, {"code": -32012, "message": "Interpretation timed out"})
+        self.assertEqual(len(processes), 1)
+        self.assertIsNotNone(processes[0].returncode)
+        self.assertNotEqual(processes[0].returncode, 0)
+        response = self.call("lambda.interpret", {"source": "42"})
+        self.assert_rpc_result(response, "source", {"type": "sint", "value": "42"})
+
+    def test_interpret_worker_failure_is_logged_and_redacted(self):
+        with self.assertLogs(dispatcher.__name__, level="ERROR") as logs:
+            response = self.call("lambda.interpret", {"source": "1 / 0"})
+        error = self.assert_rpc_error(response, "source", -32603)
+        self.assertEqual(error, {"code": -32603, "message": "Internal error"})
+        self.assertIn("ZeroDivisionError", logs.output[0])
+
+    def test_interpret_rejects_invalid_worker_reply(self):
+        bad_worker = (sys.executable, "-B", "-c", "print('{}')")
+        with patch.object(service, "WORKER_COMMAND", bad_worker):
+            with self.assertLogs(dispatcher.__name__, level="ERROR") as logs:
+                response = self.call("lambda.interpret", {"source": "42"})
+        error = self.assert_rpc_error(response, "source", -32603)
+        self.assertEqual(error, {"code": -32603, "message": "Internal error"})
+        self.assertIn("Invalid interpretation worker reply", logs.output[0])
 
     def test_unsupported_media_type_is_a_transport_error(self):
         for content_type in (None, "text/plain", "application/problem+json"):
