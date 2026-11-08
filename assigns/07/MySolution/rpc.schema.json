@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "LAMBDA3 JSON-RPC payloads",
+  "anyOf": [
+    { "$ref": "#/$defs/requestPayload" },
+    { "$ref": "#/$defs/responsePayload" }
+  ],
+  "$defs": {
+    "id": {
+      "type": ["string", "number", "null"]
+    },
+    "request": {
+      "type": "object",
+      "required": ["jsonrpc", "method", "params"],
+      "properties": {
+        "jsonrpc": { "const": "2.0" },
+        "method": { "type": "string" },
+        "params": { "type": "object" },
+        "id": { "$ref": "#/$defs/id" }
+      }
+    },
+    "requestPayload": {
+      "oneOf": [
+        { "$ref": "#/$defs/request" },
+        {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/request" }
+        }
+      ]
+    },
+    "error": {
+      "type": "object",
+      "required": ["code", "message"],
+      "properties": {
+        "code": { "type": "integer" },
+        "message": { "type": "string" },
+        "data": { "type": "object" }
+      },
+      "additionalProperties": false
+    },
+    "response": {
+      "type": "object",
+      "required": ["jsonrpc", "id"],
+      "properties": {
+        "jsonrpc": { "const": "2.0" },
+        "id": { "$ref": "#/$defs/id" },
+        "result": { "type": "object" },
+        "error": { "$ref": "#/$defs/error" }
+      },
+      "oneOf": [
+        { "required": ["result"] },
+        { "required": ["error"] }
+      ],
+      "additionalProperties": false
+    },
+    "responsePayload": {
+      "oneOf": [
+        { "$ref": "#/$defs/response" },
+        {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/response" }
+        }
+      ]
+    }
+  }
+}
