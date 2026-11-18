@@ -20,6 +20,10 @@ _EVENT_NAMES = {0: "try", 1: "place", 2: "reject", 3: "backtrack", 4: "solution"
 _FORCE_CURSOR = L.D0Eop1("lazy_eval", L.D0Evar("cursor"))
 
 
+class InvalidBoardSize(ValueError):
+    """The requested size is outside the supported integer range."""
+
+
 class QueensSolver:
     """Load and type-check the entry point once for any number of streams."""
 
@@ -34,10 +38,10 @@ class QueensSolver:
             raise TypeError("Unexpected LAMBDA3 solver entry point type")
         self._environment = L.ENVcns("queens_open", L.d0exp_evaluate(entry), L.ENVnil())
 
-    def open(self, size: int) -> L.D0Vlazy:
+    def open(self, size: object) -> L.D0Vlazy:
         """Construct a fresh cursor without forcing its first event."""
         if type(size) is not int or not MIN_SIZE <= size <= MAX_SIZE:
-            raise ValueError("Board size must be an integer from 4 through 10")
+            raise InvalidBoardSize("Board size must be an integer from 4 through 10")
         call = L.D0Eapp(L.D0Evar("queens_open"), L.D0Eint(size))
         cursor = L.d0exp_evaluate(call, self._environment)
         if not isinstance(cursor, L.D0Vlazy):

@@ -120,9 +120,11 @@ run in Python and an eight-element array on the wire.
 
 ## RPC contract and lifecycle
 
-Use `POST /rpc` with `Content-Type: application/json`. Each pair below shows
-the request followed by its HTTP 200 response. The last three examples refer
-to the same stream.
+Use `POST /rpc` with `Content-Type: application/json`. The Flask transport
+and request dispatcher adapt Assign07's HTTP parsing, response envelopes, and
+request ID validation. The dispatch table registers the four methods below.
+Each pair shows the request followed by its HTTP 200 response. The last three
+examples refer to the same stream. [JSON-RPC 2.0 specification](https://www.jsonrpc.org/specification)
 
 **`service.health`**
 
