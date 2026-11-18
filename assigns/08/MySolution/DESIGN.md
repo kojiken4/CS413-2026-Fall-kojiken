@@ -194,10 +194,11 @@ documented result data or error fields.
 
 Start opens a stream for size 8 and shows an empty board ready for Step or
 Play. Step consumes one event. Play schedules one `next` request at a time
-with `limit: 1` at the selected speed. Pause stops scheduling requests. If a
-request was already in flight, the client holds its event for the next Step or
-Play so the renderer stays paused. Next solution advances incrementally until
-the next `solution` or `done` event. The renderer uses the event snapshot and
+with `limit: 1` at the selected speed. Next solution reads bounded batches of
+up to 32 events and applies them in order until `solution` or `done`. The
+client keeps any later events from that batch for subsequent playback. Pause
+stops scheduling requests and holds any in-flight response for later so the
+renderer stays paused. The renderer uses the event snapshot and
 highlights the candidate, placement, rejection, removal, or full solution as
 appropriate. It increments the solution count only on `solution` and marks
 search completion on `done`.

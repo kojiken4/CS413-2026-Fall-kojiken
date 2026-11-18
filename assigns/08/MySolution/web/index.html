@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>N-Queens Search</title>
+  <link rel="stylesheet" href="/assets/styles.css">
+  <script type="module" src="/assets/main.js"></script>
+</head>
+<body>
+  <main class="workspace">
+    <header class="page-header">
+      <h1>N-Queens Search</h1>
+      <p>Follow the 8×8 search one move at a time.</p>
+    </header>
+
+    <div class="layout">
+      <section id="board" class="board" aria-label="Chessboard"></section>
+
+      <aside class="sidebar">
+        <section class="panel" aria-label="Search controls">
+          <div class="controls">
+            <button type="button" id="start" class="action-primary">Start</button>
+            <button type="button" id="step" disabled>Step</button>
+            <button type="button" id="play" disabled>Play</button>
+            <button type="button" id="seek" disabled>Next solution</button>
+            <button type="button" id="reset" class="action-reset" disabled>Reset</button>
+          </div>
+          <div class="speed">
+            <label for="speed">Playback speed</label>
+            <select id="speed">
+              <option value="800">Slow</option>
+              <option value="300" selected>Normal</option>
+              <option value="60">Fast</option>
+            </select>
+          </div>
+        </section>
+
+        <section class="panel status-panel" aria-label="Search status">
+          <div class="count">
+            <span>Solutions found</span>
+            <output id="count" aria-label="Solutions found">0</output>
+          </div>
+          <div class="status" id="status" data-event="idle" role="status">
+            <h2 id="status-title">Ready to start</h2>
+            <p id="status-detail">Start opens a new search.</p>
+          </div>
+          <p id="error" class="error" role="alert" hidden></p>
+        </section>
+      </aside>
+    </div>
+  </main>
+</body>
+</html>

@@ -15,8 +15,12 @@ def _reject_non_json_number(token: str) -> NoReturn:
 
 
 def create_app(*, streams: StreamTable | None = None) -> Flask:
-    app = Flask(__name__, static_folder=None)
+    app = Flask(__name__, static_folder="web", static_url_path="/assets")
     methods = methods_for(streams if streams is not None else StreamTable())
+
+    @app.get("/")
+    def index() -> Response:
+        return app.send_static_file("index.html")
 
     @app.post("/rpc")
     def rpc() -> Response:
