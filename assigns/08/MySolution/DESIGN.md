@@ -81,6 +81,13 @@ captured branch continuation. It restores the parent snapshot, emits
 `backtrack`, and defers the next sibling attempt. Each complete board has
 one path through this tree. The ordering yields 92 distinct boards for 8×8.
 
+In `queens.lam`, one recursive `try_column` function handles both row entry
+at column zero and subsequent candidates. The supplied `eight_queens_stream.lam`
+illustrates the newest-first list and delayed stream primitives used here.
+The event search defines its own CPS safety and branch continuations. The
+Python adapter follows Assign07's interpreter import pattern to resolve the
+supplied `basics0` sibling module.
+
 ## Lazy cells and event schema
 
 `Strm[Event]` is `Lazy[Stcn[Event]]` in LAMBDA3. The adapter opens a stream by

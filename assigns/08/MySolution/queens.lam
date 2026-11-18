@@ -1,0 +1,96 @@
+# A board stores columns newest first. The interpreter adapter reverses it
+# when exposing an event. An event is (kind, row, column, board).
+try_kind = 0
+place_kind = 1
+reject_kind = 2
+backtrack_kind = 3
+solution_kind = 4
+done_kind = 5
+
+suspend[T] : (unit -> Strm[T]) -> Strm[T] = lam (resume) =>
+  lazy_make(lam (u: unit) => lazy_eval(resume()))
+
+emit[T] : (T, unit -> Strm[T]) -> Strm[T] = lam (p) =>
+  lazy_make(lam (u: unit) => stcn_cons(p.0, suspend(p.1)))
+
+empty_stream[T] : unit -> Strm[T] = lam (u: unit) =>
+  lazy_make(lam (v: unit) => stcn_nil())
+
+event : (sint, sint, sint, List[sint]) -> (sint, sint, sint, List[sint]) =
+  lam (p) => (p.0, p.1, p.2, p.3)
+
+extend : (List[sint], sint) -> List[sint] = lam (p) =>
+  list_cons(p.1, p.0)
+
+# R is the continuations' common answer type. The search instantiates it
+# with Strm[Event]. Each recursive call advances to an earlier board row.
+check_safe[R] : (sint, sint, List[sint], unit -> R, unit -> R) -> R =
+  fix check_safe(p) =>
+    let
+      column = p.0;
+      distance = p.1;
+      previous = p.2;
+      on_safe = p.3;
+      on_conflict = p.4
+    in
+      if list_nilq(previous) then on_safe()
+      else
+        let earlier = list_head(previous)
+        in
+          if earlier == column then on_conflict()
+          else if earlier == column - distance then on_conflict()
+          else if earlier == column + distance then on_conflict()
+          else check_safe(column, distance + 1, list_tail(previous), on_safe, on_conflict)
+        end
+    end
+
+search : (sint,
+          (List[sint], unit -> Strm[(sint, sint, sint, List[sint])])
+            -> Strm[(sint, sint, sint, List[sint])],
+          unit -> Strm[(sint, sint, sint, List[sint])])
+          -> Strm[(sint, sint, sint, List[sint])] = lam (args) =>
+  let
+    size = args.0;
+    on_solution = args.1;
+    root_exhausted = args.2;
+    try_column : (sint, sint, List[sint], unit -> Strm[(sint, sint, sint, List[sint])])
+                 -> Strm[(sint, sint, sint, List[sint])] = fix try_column(p) =>
+      let
+        row = p.0;
+        column = p.1;
+        board = p.2;
+        on_exhausted = p.3
+      in
+        if row == size then on_solution(board, on_exhausted)
+        else if column == size then on_exhausted()
+        else
+          let
+            next_column = lam (u: unit) => try_column(row, column + 1, board, on_exhausted);
+            leave_branch = lam (u: unit) => emit(event(backtrack_kind, row, column, board), next_column);
+            on_safe = lam (u: unit) =>
+              let extended = extend(board, column)
+              in
+                emit(event(place_kind, row, column, extended),
+                     lam (v: unit) => try_column(row + 1, 0, extended, leave_branch))
+              end;
+            on_conflict = lam (u: unit) => emit(event(reject_kind, row, column, board), next_column)
+          in
+            emit(event(try_kind, row, column, board),
+                 lam (u: unit) => check_safe(column, 1, board, on_safe, on_conflict))
+          end
+      end
+  in
+    try_column(0, 0, list_nil(), root_exhausted)
+  end
+
+queens_open : sint -> Strm[(sint, sint, sint, List[sint])] = lam (size) =>
+  let
+    # Solution and done events have no coordinates. Done has no board either.
+    on_solution : (List[sint], unit -> Strm[(sint, sint, sint, List[sint])])
+                  -> Strm[(sint, sint, sint, List[sint])] = lam (p) =>
+      emit(event(solution_kind, -1, -1, p.0), p.1);
+    root_exhausted : unit -> Strm[(sint, sint, sint, List[sint])] = lam (u: unit) =>
+      emit(event(done_kind, -1, -1, list_nil()), empty_stream)
+  in
+    suspend(lam (u: unit) => search(size, on_solution, root_exhausted))
+  end
