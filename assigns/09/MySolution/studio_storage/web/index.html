@@ -6,52 +6,123 @@
   <title>LAMBDA-studio</title>
   <link rel="stylesheet" href="/studio/styles.css">
   <script type="module" src="/studio/programs.js"></script>
+  <script type="module" src="/studio/collections.js"></script>
 </head>
 <body>
   <header class="site-header">
     <div class="site-width">
       <h1>LAMBDA-studio</h1>
       <p>Saved data is cleared when the storage service stops.</p>
+      <nav class="workspace-nav" aria-label="Studio">
+        <a href="#programs">Programs</a>
+        <a href="#test-collections">Test collections</a>
+      </nav>
     </div>
   </header>
-  <main class="site-width workspace">
-    <aside class="panel library" aria-labelledby="program-list-heading">
-      <h2 id="program-list-heading">Saved programs</h2>
-      <div class="actions library-actions">
-        <button id="new-program" type="button">New program</button>
-        <button id="refresh-programs" class="secondary" type="button">Refresh list</button>
-      </div>
-      <p id="program-list-status" class="muted" role="status">Loading saved programs…</p>
-      <ul id="program-list" class="program-list"></ul>
-    </aside>
+  <main class="site-width">
+    <div id="programs" class="workspace">
+      <aside class="panel library" aria-labelledby="program-list-heading">
+        <h2 id="program-list-heading">Saved programs</h2>
+        <div class="actions library-actions">
+          <button id="new-program" type="button">New program</button>
+          <button id="refresh-programs" class="secondary" type="button">Refresh list</button>
+        </div>
+        <p id="program-list-status" class="muted" role="status">Loading saved programs…</p>
+        <ul id="program-list" class="record-list"></ul>
+      </aside>
 
-    <section class="panel editor" aria-labelledby="program-editor-heading">
-      <header class="editor-heading">
-        <h2 id="program-editor-heading">Program editor</h2>
-        <p id="save-status" class="save-status" role="status">New program</p>
-      </header>
-      <p id="program-error" class="notice error" role="alert" hidden></p>
-      <div id="program-conflict" class="notice" hidden>
-        <p role="alert">A newer version is saved on the server. Reloading replaces this draft.</p>
-        <button id="reload-program" class="secondary" type="button">Reload server copy</button>
-      </div>
-      <form id="program-form">
-        <fieldset id="program-fields">
-          <label for="program-name">Name</label>
-          <input id="program-name" name="name" type="text" required>
+      <section class="panel editor" aria-labelledby="program-editor-heading">
+        <header class="editor-heading">
+          <h2 id="program-editor-heading">Program editor</h2>
+          <p id="save-status" class="save-status" role="status">New program</p>
+        </header>
+        <p id="program-error" class="notice error" role="alert" hidden></p>
+        <div id="program-conflict" class="notice" hidden>
+          <p role="alert">A newer version is saved on the server. Reloading replaces this draft.</p>
+          <button id="reload-program" class="secondary" type="button">Reload server copy</button>
+        </div>
+        <form id="program-form">
+          <fieldset id="program-fields">
+            <label for="program-name">Name</label>
+            <input id="program-name" name="name" type="text" required>
 
-          <label for="program-description">Description <span class="muted">(optional)</span></label>
-          <textarea id="program-description" name="description" rows="2"></textarea>
+            <label for="program-description">Description <span class="muted">(optional)</span></label>
+            <textarea id="program-description" name="description" rows="2"></textarea>
 
-          <label for="program-source">LAMBDA source</label>
-          <textarea id="program-source" class="source" name="source" rows="12" spellcheck="false" required></textarea>
+            <label for="program-source">LAMBDA source</label>
+            <textarea id="program-source" class="source" name="source" rows="12" spellcheck="false" required></textarea>
 
+            <div class="actions">
+              <button id="save-program" type="submit">Save program</button>
+            </div>
+          </fieldset>
+        </form>
+      </section>
+    </div>
+    <div id="test-collections" class="workspace">
+      <aside class="panel library" aria-labelledby="collection-list-heading">
+        <h2 id="collection-list-heading">Test collections</h2>
+        <form id="collection-form" class="collection-create">
+          <label for="collection-name">Collection name</label>
+          <input id="collection-name" name="name" type="text" required>
           <div class="actions">
-            <button id="save-program" type="submit">Save program</button>
+            <button id="create-collection" type="submit">Create collection</button>
+            <button id="refresh-collections" class="secondary" type="button">Refresh collections</button>
           </div>
-        </fieldset>
-      </form>
-    </section>
+        </form>
+        <p id="collection-library-error" class="notice error" role="alert" hidden></p>
+        <p id="collection-list-status" class="muted" role="status">Loading test collections…</p>
+        <ul id="collection-list" class="record-list"></ul>
+      </aside>
+
+      <section class="panel editor" aria-labelledby="collection-heading">
+        <header class="editor-heading">
+          <h2 id="collection-heading">Collection editor</h2>
+          <p id="collection-status" class="save-status" role="status"></p>
+        </header>
+        <p id="collection-placeholder" class="muted">Create or select a collection to edit its test cases.</p>
+        <div id="collection-content" hidden>
+          <div id="collection-conflict" class="notice" hidden>
+            <p role="alert">A newer collection revision is saved. Reload the collection to continue editing.</p>
+          </div>
+          <p id="case-error" class="notice error" role="alert" hidden></p>
+          <div class="actions case-actions">
+            <button id="add-case" type="button">Add case</button>
+            <button id="reload-collection" class="secondary" type="button">Reload collection</button>
+          </div>
+          <p id="case-list-status" class="muted">No cases saved yet.</p>
+          <ul id="case-list" class="record-list" aria-label="Saved cases"></ul>
+          <form id="case-form" class="case-form" hidden>
+            <fieldset id="case-fields">
+              <h3 id="case-form-heading">New test case</h3>
+              <label for="case-name">Case name</label>
+              <input id="case-name" name="name" type="text" required>
+
+              <label for="case-source">Case source</label>
+              <textarea id="case-source" class="source" name="source" rows="6" spellcheck="false" required></textarea>
+
+              <label for="case-outcome">Expected outcome</label>
+              <select id="case-outcome" name="outcome">
+                <option value="value">Formatted value</option>
+                <option value="syntax">Syntax error</option>
+                <option value="type">Type error</option>
+              </select>
+              <div id="expected-value-field">
+                <label for="expected-value">Expected value</label>
+                <textarea id="expected-value" name="expectedValue" rows="2"></textarea>
+              </div>
+
+              <label for="case-description">Case description <span class="muted">(optional)</span></label>
+              <textarea id="case-description" name="description" rows="2"></textarea>
+              <div class="actions">
+                <button id="save-case" type="submit">Save case</button>
+                <button id="delete-case" class="secondary destructive" type="button" hidden>Delete case</button>
+              </div>
+            </fieldset>
+          </form>
+        </div>
+      </section>
+    </div>
   </main>
 </body>
 </html>

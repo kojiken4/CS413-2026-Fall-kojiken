@@ -1,41 +1,11 @@
 """Run with python -m unittest discover -s tests/browser -v after installing Chromium."""
 
-import os
-from threading import Thread
-from unittest import TestCase
+from playwright.sync_api import expect
 
-from playwright.sync_api import expect, sync_playwright
-from werkzeug.serving import make_server
-
-from studio_storage.studio import create_app
+from browser_support import StudioBrowserTestCase
 
 
-class ProgramEditorTests(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        playwright = sync_playwright().start()
-        cls.addClassCleanup(playwright.stop)
-        cls.browser = playwright.chromium.launch(channel=os.environ.get("ASSIGN09_BROWSER_CHANNEL"))
-        cls.addClassCleanup(cls.browser.close)
-
-    def setUp(self):
-        server = make_server("127.0.0.1", 0, create_app(), threaded=True)
-        worker = Thread(target=server.serve_forever, name="studio-test-server", daemon=True)
-        worker.start()
-        self.addCleanup(server.server_close)
-        self.addCleanup(worker.join, 5)
-        self.addCleanup(server.shutdown)
-        self.url = f"http://127.0.0.1:{server.server_port}"
-        self.errors = []
-        self.addCleanup(self.assertEqual, self.errors, [])
-
-    def page_in_new_context(self):
-        context = self.browser.new_context()
-        self.addCleanup(context.close)
-        page = context.new_page()
-        page.on("pageerror", lambda error: self.errors.append(str(error)))
-        return page
-
+class ProgramEditorTests(StudioBrowserTestCase):
     def fill_program(self, page, name, source):
         page.get_by_label("Name", exact=True).fill(name)
         page.get_by_label("LAMBDA source").fill(source)
@@ -120,7 +90,7 @@ class ProgramEditorTests(TestCase):
         page.get_by_role("button", name="Last program", exact=True).click()
         self.expect_status(page, "Saved · revision 1")
         expect(page.get_by_label("LAMBDA source")).to_have_value("1\n")
-        page.get_by_label("Description (optional)").fill("Reviewed")
+        page.get_by_label("Description (optional)", exact=True).fill("Reviewed")
         self.save_program(page)
         self.expect_status(page, "Saved · revision 2")
         saved = page.request.get(f"{api}/{program_id}").json()["program"]

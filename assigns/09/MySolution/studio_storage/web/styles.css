@@ -16,7 +16,7 @@ body { margin: 0; }
 
 [hidden] { display: none !important; }
 
-h1, h2, p { margin: 0; }
+h1, h2, h3, p { margin: 0; }
 
 h1 {
   font-size: 1.9rem;
@@ -44,13 +44,24 @@ h2 {
   color: #d3ddea;
 }
 
+.workspace-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  margin-top: 1rem;
+}
+
+.workspace-nav a { color: #fff; }
+
 .workspace {
   display: grid;
   grid-template-columns: minmax(14rem, 1fr) minmax(0, 2.6fr);
   gap: 1.25rem;
   align-items: start;
-  padding-block: 1.5rem 2.5rem;
+  padding-block: 1.5rem;
 }
+
+.workspace:last-child { padding-bottom: 2.5rem; }
 
 .panel {
   min-width: 0;
@@ -69,6 +80,26 @@ h2 {
 }
 
 .library-actions { margin-block: 1rem; }
+
+.collection-create { margin-block: 1rem; }
+
+.collection-create label, #expected-value-field label {
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.case-actions { margin-bottom: 1rem; }
+
+.case-form {
+  margin-top: 1rem;
+  border-top: 1px solid var(--line);
+  padding-top: 1rem;
+}
+
+.case-form h3 {
+  margin-bottom: 0.5rem;
+  font-size: 1.05rem;
+}
 
 button {
   min-height: 2.5rem;
@@ -98,12 +129,16 @@ button:disabled {
 
 .secondary:hover:enabled { background: #eaf1fb; }
 
-:is(button, input, textarea):focus-visible {
+.destructive { color: #8c2822; }
+
+.destructive:hover:enabled { background: #fff1ef; }
+
+:is(a, button, input, select, textarea):focus-visible {
   outline: 3px solid #2374d8;
   outline-offset: 2px;
 }
 
-.program-list {
+.record-list {
   display: grid;
   gap: 0.25rem;
   max-height: 30rem;
@@ -113,9 +148,9 @@ button:disabled {
   list-style: none;
 }
 
-.program-list:empty { display: none; }
+.record-list:empty { display: none; }
 
-.program-list button {
+.record-list button {
   width: 100%;
   overflow-wrap: anywhere;
   color: #1d395d;
@@ -123,8 +158,8 @@ button:disabled {
   text-align: left;
 }
 
-.program-list button:hover:enabled,
-.program-list button[aria-current="true"] {
+.record-list button:hover:enabled,
+.record-list button[aria-current="true"] {
   background: #eaf1fb;
   border-color: #bacde6;
 }
@@ -179,7 +214,7 @@ label { font-weight: 600; }
 
 label .muted { font-weight: 400; }
 
-input, textarea {
+input, textarea, select {
   display: block;
   width: 100%;
   padding: 0.65rem 0.75rem;
@@ -189,6 +224,16 @@ input, textarea {
   color: inherit;
   background: #fff;
   font: inherit;
+}
+
+select {
+  appearance: none;
+  padding-right: 2rem;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
+                    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: right 1rem center, right 0.7rem center;
+  background-size: 0.3rem 0.3rem;
+  background-repeat: no-repeat;
 }
 
 textarea { resize: vertical; }
@@ -201,5 +246,5 @@ textarea { resize: vertical; }
 
 @media (max-width: 46rem) {
   .workspace { grid-template-columns: minmax(0, 1fr); }
-  .program-list { max-height: 12rem; }
+  .record-list { max-height: 12rem; }
 }

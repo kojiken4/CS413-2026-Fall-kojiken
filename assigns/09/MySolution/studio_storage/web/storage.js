@@ -44,14 +44,14 @@ async function request(path, { method = "GET", fields, etag } = {}) {
   return { data, etag: response.headers.get("ETag") };
 }
 
-async function listRecords(path) {
+async function listRecords(path, isRecord) {
   const records = [];
   const seenCursors = new Set();
   let cursor = null;
   do {
     const query = cursor === null ? "" : "?" + new URLSearchParams({ cursor });
     const { data } = await request(path + query);
-    if (!Array.isArray(data?.items) ||
+    if (!Array.isArray(data?.items) || !data.items.every(isRecord) ||
         (data.next_cursor !== null && (typeof data.next_cursor !== "string" || !data.next_cursor))) {
       throw invalidResponse();
     }
@@ -69,28 +69,70 @@ function isProgram(program) {
     typeof program.description === "string" && Number.isInteger(program.revision);
 }
 
-async function readProgram(path, options) {
-  const { data, etag } = await request(path, options);
-  if (!isProgram(data?.program) || etag !== `"${data.program.revision}"`) {
-    throw invalidResponse();
-  }
-  return { program: data.program, etag };
+function isCase(testCase) {
+  if (!testCase || typeof testCase.id !== "string" || typeof testCase.name !== "string" ||
+      typeof testCase.source !== "string" || typeof testCase.description !== "string") return false;
+  const expected = testCase.expected;
+  return (expected?.kind === "value" && typeof expected.value === "string") ||
+    (expected?.kind === "error" && ["syntax", "type"].includes(expected.category));
 }
 
-export async function listPrograms() {
-  const programs = await listRecords("/programs");
-  if (!programs.every(isProgram)) throw invalidResponse();
-  return programs;
+function isCollection(collection) {
+  return collection && typeof collection.id === "string" && typeof collection.name === "string" &&
+    typeof collection.description === "string" && Number.isInteger(collection.revision) &&
+    Array.isArray(collection.cases) && collection.cases.every(isCase);
+}
+
+async function readRecord(path, key, isRecord, options) {
+  const { data, etag } = await request(path, options);
+  const record = data?.[key];
+  if (!isRecord(record) || etag !== `"${record.revision}"`) throw invalidResponse();
+  return { [key]: record, etag };
+}
+
+export function listPrograms() {
+  return listRecords("/programs", isProgram);
 }
 
 export function getProgram(id) {
-  return readProgram(`/programs/${encodeURIComponent(id)}`);
+  return readRecord(`/programs/${encodeURIComponent(id)}`, "program", isProgram);
 }
 
 export function createProgram(fields) {
-  return readProgram("/programs", { method: "POST", fields });
+  return readRecord("/programs", "program", isProgram, { method: "POST", fields });
 }
 
 export function updateProgram(id, fields, etag) {
-  return readProgram(`/programs/${encodeURIComponent(id)}`, { method: "PUT", fields, etag });
+  return readRecord(`/programs/${encodeURIComponent(id)}`, "program", isProgram, { method: "PUT", fields, etag });
+}
+
+function collectionPath(id) {
+  return `/collections/${encodeURIComponent(id)}`;
+}
+
+export function listCollections() {
+  return listRecords("/collections", isCollection);
+}
+
+export function getCollection(id) {
+  return readRecord(collectionPath(id), "collection", isCollection);
+}
+
+export function createCollection(fields) {
+  return readRecord("/collections", "collection", isCollection, { method: "POST", fields });
+}
+
+export function appendCase(collectionId, fields, etag) {
+  const path = `${collectionPath(collectionId)}/cases`;
+  return readRecord(path, "collection", isCollection, { method: "POST", fields, etag });
+}
+
+export function updateCase(collectionId, caseId, fields, etag) {
+  const path = `${collectionPath(collectionId)}/cases/${encodeURIComponent(caseId)}`;
+  return readRecord(path, "collection", isCollection, { method: "PUT", fields, etag });
+}
+
+export function deleteCase(collectionId, caseId, etag) {
+  const path = `${collectionPath(collectionId)}/cases/${encodeURIComponent(caseId)}`;
+  return readRecord(path, "collection", isCollection, { method: "DELETE", etag });
 }
