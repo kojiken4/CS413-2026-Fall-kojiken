@@ -7,10 +7,10 @@ from flask import Flask, Response, jsonify, request
 from werkzeug.exceptions import HTTPException
 
 from .errors import ApiError, invalid_request
-from .models import Program
+from .models import Collection, Program
 from .service import StorageService, revision_tag
 from .store import MemoryStore, Store
-from .validation import page_parameters, program_write, record_id
+from .validation import case_write, collection_write, page_parameters, program_write, record_id
 
 MAX_BODY_BYTES = 262_144
 
@@ -36,10 +36,10 @@ def _read_json() -> object:
         raise invalid_request("The request body must be valid UTF-8 JSON.") from None
 
 
-def _program_response(program: Program, status: int = 200) -> Response:
-    response = jsonify(program=program.to_dict())
+def _record_response(key: str, record: Program | Collection, status: int = 200) -> Response:
+    response = jsonify({key: record.to_dict()})
     response.status_code = status
-    response.headers["ETag"] = revision_tag(program.revision)
+    response.headers["ETag"] = revision_tag(record.revision)
     return response
 
 
@@ -79,7 +79,7 @@ def create_app(store: Store | None = None) -> Flask:
     @app.post("/api/v1/programs")
     def create_program() -> Response:
         program = service.create_program(program_write(_read_json()))
-        return _program_response(program, status=201)
+        return _record_response("program", program, status=201)
 
     @app.get("/api/v1/programs")
     def list_programs() -> Response:
@@ -89,7 +89,7 @@ def create_app(store: Store | None = None) -> Flask:
 
     @app.get("/api/v1/programs/<program_id>")
     def get_program(program_id: str) -> Response:
-        return _program_response(service.get_program(record_id(program_id)))
+        return _record_response("program", service.get_program(record_id(program_id)))
 
     @app.put("/api/v1/programs/<program_id>")
     def update_program(program_id: str) -> Response:
@@ -99,11 +99,63 @@ def create_app(store: Store | None = None) -> Flask:
         # under the same lock as the mutation in case another caller won.
         service.check_program_revision(program_id, if_match)
         program = service.update_program(program_id, if_match, program_write(_read_json()))
-        return _program_response(program)
+        return _record_response("program", program)
 
     @app.delete("/api/v1/programs/<program_id>")
     def delete_program(program_id: str) -> Response:
         service.delete_program(record_id(program_id), request.headers.get("If-Match"))
         return Response(status=204)
+
+    @app.post("/api/v1/collections")
+    def create_collection() -> Response:
+        collection = service.create_collection(collection_write(_read_json()))
+        return _record_response("collection", collection, status=201)
+
+    @app.get("/api/v1/collections")
+    def list_collections() -> Response:
+        limit, cursor = page_parameters(request.args.to_dict(flat=False))
+        items, next_cursor = service.list_collections(limit, cursor)
+        return jsonify(items=[collection.to_dict() for collection in items], next_cursor=next_cursor)
+
+    @app.get("/api/v1/collections/<collection_id>")
+    def get_collection(collection_id: str) -> Response:
+        return _record_response("collection", service.get_collection(record_id(collection_id)))
+
+    @app.put("/api/v1/collections/<collection_id>")
+    def update_collection(collection_id: str) -> Response:
+        collection_id = record_id(collection_id)
+        if_match = request.headers.get("If-Match")
+        service.check_collection_revision(collection_id, if_match)
+        collection = service.update_collection(collection_id, if_match, collection_write(_read_json()))
+        return _record_response("collection", collection)
+
+    @app.delete("/api/v1/collections/<collection_id>")
+    def delete_collection(collection_id: str) -> Response:
+        service.delete_collection(record_id(collection_id), request.headers.get("If-Match"))
+        return Response(status=204)
+
+    @app.post("/api/v1/collections/<collection_id>/cases")
+    def append_case(collection_id: str) -> Response:
+        collection_id = record_id(collection_id)
+        if_match = request.headers.get("If-Match")
+        service.check_collection_revision(collection_id, if_match)
+        collection = service.append_case(collection_id, if_match, case_write(_read_json()))
+        return _record_response("collection", collection, status=201)
+
+    @app.put("/api/v1/collections/<collection_id>/cases/<case_id>")
+    def update_case(collection_id: str, case_id: str) -> Response:
+        collection_id = record_id(collection_id)
+        case_id = record_id(case_id)
+        if_match = request.headers.get("If-Match")
+        service.check_case_revision(collection_id, case_id, if_match)
+        collection = service.update_case(collection_id, case_id, if_match, case_write(_read_json()))
+        return _record_response("collection", collection)
+
+    @app.delete("/api/v1/collections/<collection_id>/cases/<case_id>")
+    def delete_case(collection_id: str, case_id: str) -> Response:
+        collection = service.delete_case(
+            record_id(collection_id), record_id(case_id), request.headers.get("If-Match"),
+        )
+        return _record_response("collection", collection)
 
     return app
