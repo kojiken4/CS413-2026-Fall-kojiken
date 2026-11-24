@@ -1,0 +1,1010 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "LAMBDA-studio storage API",
+    "version": "1.0",
+    "description": "Local in-memory program and test collection storage. Records and pagination snapshots are cleared when the service stops."
+  },
+  "servers": [
+    {
+      "url": "http://127.0.0.1:8001/api/v1"
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "operationId": "getHealth",
+        "summary": "Read service health",
+        "responses": {
+          "200": {
+            "description": "The service is healthy.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/Health"}
+              }
+            }
+          },
+          "405": {"$ref": "#/components/responses/MethodNotAllowed"},
+          "500": {"$ref": "#/components/responses/InternalError"}
+        }
+      }
+    },
+    "/programs": {
+      "get": {
+        "operationId": "listPrograms",
+        "summary": "List programs",
+        "parameters": [
+          {"$ref": "#/components/parameters/Limit"},
+          {"$ref": "#/components/parameters/Cursor"}
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of full records in snapshot order.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/ProgramPage"}
+              }
+            }
+          },
+          "400": {"$ref": "#/components/responses/InvalidRequest"},
+          "405": {"$ref": "#/components/responses/MethodNotAllowed"},
+          "500": {"$ref": "#/components/responses/InternalError"}
+        }
+      },
+      "post": {
+        "operationId": "createProgram",
+        "summary": "Create a program",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/ProgramWrite"}
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The created program at revision 1.",
+            "headers": {
+              "ETag": {"$ref": "#/components/headers/ETag"}
+            },
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/ProgramEnvelope"}
+              }
+            }
+          },
+          "400": {"$ref": "#/components/responses/InvalidRequest"},
+          "405": {"$ref": "#/components/responses/MethodNotAllowed"},
+          "409": {"$ref": "#/components/responses/CreateConflict"},
+          "413": {"$ref": "#/components/responses/RequestTooLarge"},
+          "415": {"$ref": "#/components/responses/UnsupportedMediaType"},
+          "500": {"$ref": "#/components/responses/InternalError"}
+        }
+      }
+    },
+    "/programs/{id}": {
+      "parameters": [
+        {"$ref": "#/components/parameters/Id"}
+      ],
+      "get": {
+        "operationId": "getProgram",
+        "summary": "Read a program",
+        "responses": {
+          "200": {
+            "description": "The current program.",
+            "headers": {
+              "ETag": {"$ref": "#/components/headers/ETag"}
+            },
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/ProgramEnvelope"}
+              }
+            }
+          },
+          "400": {"$ref": "#/components/responses/InvalidRequest"},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "405": {"$ref": "#/components/responses/MethodNotAllowed"},
+          "500": {"$ref": "#/components/responses/InternalError"}
+        }
+      },
+      "put": {
+        "operationId": "updateProgram",
+        "summary": "Update a program",
+        "parameters": [
+          {"$ref": "#/components/parameters/IfMatch"}
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/ProgramWrite"}
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated program.",
+            "headers": {
+              "ETag": {"$ref": "#/components/headers/ETag"}
+            },
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/ProgramEnvelope"}
+              }
+            }
+          },
+          "400": {"$ref": "#/components/responses/InvalidRequest"},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "405": {"$ref": "#/components/responses/MethodNotAllowed"},
+          "409": {"$ref": "#/components/responses/UpdateConflict"},
+          "413": {"$ref": "#/components/responses/RequestTooLarge"},
+          "415": {"$ref": "#/components/responses/UnsupportedMediaType"},
+          "428": {"$ref": "#/components/responses/PreconditionRequired"},
+          "500": {"$ref": "#/components/responses/InternalError"}
+        }
+      },
+      "delete": {
+        "operationId": "deleteProgram",
+        "summary": "Delete a program",
+        "parameters": [
+          {"$ref": "#/components/parameters/IfMatch"}
+        ],
+        "responses": {
+          "204": {
+            "description": "The program was deleted. No response body."
+          },
+          "400": {"$ref": "#/components/responses/InvalidRequest"},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "405": {"$ref": "#/components/responses/MethodNotAllowed"},
+          "409": {"$ref": "#/components/responses/RevisionConflict"},
+          "428": {"$ref": "#/components/responses/PreconditionRequired"},
+          "500": {"$ref": "#/components/responses/InternalError"}
+        }
+      }
+    },
+    "/collections": {
+      "get": {
+        "operationId": "listCollections",
+        "summary": "List collections",
+        "parameters": [
+          {"$ref": "#/components/parameters/Limit"},
+          {"$ref": "#/components/parameters/Cursor"}
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of full records in snapshot order.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/CollectionPage"}
+              }
+            }
+          },
+          "400": {"$ref": "#/components/responses/InvalidRequest"},
+          "405": {"$ref": "#/components/responses/MethodNotAllowed"},
+          "500": {"$ref": "#/components/responses/InternalError"}
+        }
+      },
+      "post": {
+        "operationId": "createCollection",
+        "summary": "Create a collection",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/CollectionWrite"}
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The created collection at revision 1.",
+            "headers": {
+              "ETag": {"$ref": "#/components/headers/ETag"}
+            },
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/CollectionEnvelope"}
+              }
+            }
+          },
+          "400": {"$ref": "#/components/responses/InvalidRequest"},
+          "405": {"$ref": "#/components/responses/MethodNotAllowed"},
+          "409": {"$ref": "#/components/responses/CreateConflict"},
+          "413": {"$ref": "#/components/responses/RequestTooLarge"},
+          "415": {"$ref": "#/components/responses/UnsupportedMediaType"},
+          "500": {"$ref": "#/components/responses/InternalError"}
+        }
+      }
+    },
+    "/collections/{id}": {
+      "parameters": [
+        {"$ref": "#/components/parameters/Id"}
+      ],
+      "get": {
+        "operationId": "getCollection",
+        "summary": "Read a collection",
+        "responses": {
+          "200": {
+            "description": "The current collection.",
+            "headers": {
+              "ETag": {"$ref": "#/components/headers/ETag"}
+            },
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/CollectionEnvelope"}
+              }
+            }
+          },
+          "400": {"$ref": "#/components/responses/InvalidRequest"},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "405": {"$ref": "#/components/responses/MethodNotAllowed"},
+          "500": {"$ref": "#/components/responses/InternalError"}
+        }
+      },
+      "put": {
+        "operationId": "updateCollection",
+        "summary": "Update a collection",
+        "parameters": [
+          {"$ref": "#/components/parameters/IfMatch"}
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/CollectionWrite"}
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The collection with updated metadata and its existing ordered cases.",
+            "headers": {
+              "ETag": {"$ref": "#/components/headers/ETag"}
+            },
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/CollectionEnvelope"}
+              }
+            }
+          },
+          "400": {"$ref": "#/components/responses/InvalidRequest"},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "405": {"$ref": "#/components/responses/MethodNotAllowed"},
+          "409": {"$ref": "#/components/responses/UpdateConflict"},
+          "413": {"$ref": "#/components/responses/RequestTooLarge"},
+          "415": {"$ref": "#/components/responses/UnsupportedMediaType"},
+          "428": {"$ref": "#/components/responses/PreconditionRequired"},
+          "500": {"$ref": "#/components/responses/InternalError"}
+        }
+      },
+      "delete": {
+        "operationId": "deleteCollection",
+        "summary": "Delete a collection",
+        "parameters": [
+          {"$ref": "#/components/parameters/IfMatch"}
+        ],
+        "responses": {
+          "204": {
+            "description": "The collection was deleted. No response body."
+          },
+          "400": {"$ref": "#/components/responses/InvalidRequest"},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "405": {"$ref": "#/components/responses/MethodNotAllowed"},
+          "409": {"$ref": "#/components/responses/RevisionConflict"},
+          "428": {"$ref": "#/components/responses/PreconditionRequired"},
+          "500": {"$ref": "#/components/responses/InternalError"}
+        }
+      }
+    },
+    "/collections/{id}/cases": {
+      "parameters": [
+        {"$ref": "#/components/parameters/Id"}
+      ],
+      "post": {
+        "operationId": "createCase",
+        "summary": "Append a test case",
+        "parameters": [
+          {"$ref": "#/components/parameters/IfMatch"}
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/CaseWrite"}
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The collection with the new case appended.",
+            "headers": {
+              "ETag": {"$ref": "#/components/headers/ETag"}
+            },
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/CollectionEnvelope"}
+              }
+            }
+          },
+          "400": {"$ref": "#/components/responses/InvalidRequest"},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "405": {"$ref": "#/components/responses/MethodNotAllowed"},
+          "409": {"$ref": "#/components/responses/CaseCreateConflict"},
+          "413": {"$ref": "#/components/responses/RequestTooLarge"},
+          "415": {"$ref": "#/components/responses/UnsupportedMediaType"},
+          "428": {"$ref": "#/components/responses/PreconditionRequired"},
+          "500": {"$ref": "#/components/responses/InternalError"}
+        }
+      }
+    },
+    "/collections/{id}/cases/{case_id}": {
+      "parameters": [
+        {"$ref": "#/components/parameters/Id"},
+        {"$ref": "#/components/parameters/CaseId"}
+      ],
+      "put": {
+        "operationId": "updateCase",
+        "summary": "Replace a test case in place",
+        "parameters": [
+          {"$ref": "#/components/parameters/IfMatch"}
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/CaseWrite"}
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated collection with the case in its existing position.",
+            "headers": {
+              "ETag": {"$ref": "#/components/headers/ETag"}
+            },
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/CollectionEnvelope"}
+              }
+            }
+          },
+          "400": {"$ref": "#/components/responses/InvalidRequest"},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "405": {"$ref": "#/components/responses/MethodNotAllowed"},
+          "409": {"$ref": "#/components/responses/UpdateConflict"},
+          "413": {"$ref": "#/components/responses/RequestTooLarge"},
+          "415": {"$ref": "#/components/responses/UnsupportedMediaType"},
+          "428": {"$ref": "#/components/responses/PreconditionRequired"},
+          "500": {"$ref": "#/components/responses/InternalError"}
+        }
+      },
+      "delete": {
+        "operationId": "deleteCase",
+        "summary": "Delete a test case",
+        "parameters": [
+          {"$ref": "#/components/parameters/IfMatch"}
+        ],
+        "responses": {
+          "200": {
+            "description": "The updated collection with remaining case order preserved.",
+            "headers": {
+              "ETag": {"$ref": "#/components/headers/ETag"}
+            },
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/CollectionEnvelope"}
+              }
+            }
+          },
+          "400": {"$ref": "#/components/responses/InvalidRequest"},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "405": {"$ref": "#/components/responses/MethodNotAllowed"},
+          "409": {"$ref": "#/components/responses/RevisionConflict"},
+          "428": {"$ref": "#/components/responses/PreconditionRequired"},
+          "500": {"$ref": "#/components/responses/InternalError"}
+        }
+      }
+    }
+  },
+  "components": {
+    "headers": {
+      "ETag": {
+        "description": "The record's quoted decimal revision.",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "pattern": "^\"[1-9][0-9]*\"$",
+          "example": "\"3\""
+        }
+      }
+    },
+    "parameters": {
+      "Id": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "description": "Opaque program or collection ID returned by the service.",
+        "schema": {"$ref": "#/components/schemas/OpaqueId"}
+      },
+      "CaseId": {
+        "name": "case_id",
+        "in": "path",
+        "required": true,
+        "description": "Opaque case ID returned for the parent collection.",
+        "schema": {"$ref": "#/components/schemas/OpaqueId"}
+      },
+      "IfMatch": {
+        "name": "If-Match",
+        "in": "header",
+        "required": true,
+        "description": "Exact strong ETag for the existing program or collection. Case mutations use the collection's ETag.",
+        "schema": {
+          "type": "string",
+          "pattern": "^\"[1-9][0-9]*\"$",
+          "example": "\"3\""
+        }
+      },
+      "Limit": {
+        "name": "limit",
+        "in": "query",
+        "description": "Initial page size, defaulting to 50. With a cursor, omit it to use the chain's size or repeat that size.",
+        "schema": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50
+        }
+      },
+      "Cursor": {
+        "name": "cursor",
+        "in": "query",
+        "description": "Opaque next_cursor from a preceding page of this resource. Omit to start a snapshot.",
+        "schema": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "schemas": {
+      "Health": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "ok"
+          },
+          "version": {
+            "type": "string",
+            "const": "1.0"
+          }
+        },
+        "required": ["status", "version"],
+        "additionalProperties": false
+      },
+      "OpaqueId": {
+        "type": "string",
+        "minLength": 1,
+        "description": "A service-generated opaque ID."
+      },
+      "Name": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "\\S",
+        "description": "Trimmed before case-sensitive uniqueness checking and storage."
+      },
+      "Source": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "\\S",
+        "maxLength": 16384,
+        "description": "Nonblank LAMBDA source stored verbatim. The service enforces a maximum of 16,384 UTF-8 bytes."
+      },
+      "Description": {
+        "type": "string",
+        "maxLength": 2048
+      },
+      "UtcTimestamp": {
+        "type": "string",
+        "format": "date-time",
+        "pattern": "Z$"
+      },
+      "Revision": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "ExpectedOutcome": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "value"
+              },
+              "value": {
+                "type": "string"
+              }
+            },
+            "required": ["kind", "value"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "error"
+              },
+              "category": {
+                "enum": ["syntax", "type"]
+              }
+            },
+            "required": ["kind", "category"],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "ProgramWrite": {
+        "type": "object",
+        "properties": {
+          "name": {"$ref": "#/components/schemas/Name"},
+          "source": {"$ref": "#/components/schemas/Source"},
+          "description": {"$ref": "#/components/schemas/Description", "default": ""}
+        },
+        "required": ["name", "source"],
+        "additionalProperties": false
+      },
+      "CollectionWrite": {
+        "type": "object",
+        "properties": {
+          "name": {"$ref": "#/components/schemas/Name"},
+          "description": {"$ref": "#/components/schemas/Description", "default": ""}
+        },
+        "required": ["name"],
+        "additionalProperties": false
+      },
+      "CaseWrite": {
+        "type": "object",
+        "properties": {
+          "name": {"$ref": "#/components/schemas/Name"},
+          "source": {"$ref": "#/components/schemas/Source"},
+          "expected": {"$ref": "#/components/schemas/ExpectedOutcome"},
+          "description": {"$ref": "#/components/schemas/Description", "default": ""}
+        },
+        "required": ["name", "source", "expected"],
+        "additionalProperties": false
+      },
+      "Program": {
+        "type": "object",
+        "properties": {
+          "id": {"$ref": "#/components/schemas/OpaqueId"},
+          "name": {"$ref": "#/components/schemas/Name"},
+          "source": {"$ref": "#/components/schemas/Source"},
+          "description": {"$ref": "#/components/schemas/Description"},
+          "created_at": {"$ref": "#/components/schemas/UtcTimestamp"},
+          "updated_at": {"$ref": "#/components/schemas/UtcTimestamp"},
+          "revision": {"$ref": "#/components/schemas/Revision"}
+        },
+        "required": ["id", "name", "source", "description", "created_at", "updated_at", "revision"],
+        "additionalProperties": false
+      },
+      "Collection": {
+        "type": "object",
+        "properties": {
+          "id": {"$ref": "#/components/schemas/OpaqueId"},
+          "name": {"$ref": "#/components/schemas/Name"},
+          "description": {"$ref": "#/components/schemas/Description"},
+          "created_at": {"$ref": "#/components/schemas/UtcTimestamp"},
+          "updated_at": {"$ref": "#/components/schemas/UtcTimestamp"},
+          "revision": {"$ref": "#/components/schemas/Revision"},
+          "cases": {
+            "type": "array",
+            "maxItems": 50,
+            "items": {"$ref": "#/components/schemas/Case"}
+          }
+        },
+        "required": ["id", "name", "description", "created_at", "updated_at", "revision", "cases"],
+        "additionalProperties": false
+      },
+      "Case": {
+        "type": "object",
+        "properties": {
+          "id": {"$ref": "#/components/schemas/OpaqueId"},
+          "name": {"$ref": "#/components/schemas/Name"},
+          "source": {"$ref": "#/components/schemas/Source"},
+          "expected": {"$ref": "#/components/schemas/ExpectedOutcome"},
+          "description": {"$ref": "#/components/schemas/Description"}
+        },
+        "required": ["id", "name", "source", "expected", "description"],
+        "additionalProperties": false
+      },
+      "ProgramEnvelope": {
+        "type": "object",
+        "properties": {
+          "program": {"$ref": "#/components/schemas/Program"}
+        },
+        "required": ["program"],
+        "additionalProperties": false
+      },
+      "CollectionEnvelope": {
+        "type": "object",
+        "properties": {
+          "collection": {"$ref": "#/components/schemas/Collection"}
+        },
+        "required": ["collection"],
+        "additionalProperties": false
+      },
+      "ProgramPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "maxItems": 50,
+            "items": {"$ref": "#/components/schemas/Program"}
+          },
+          "next_cursor": {
+            "type": ["string", "null"],
+            "minLength": 1
+          }
+        },
+        "required": ["items", "next_cursor"],
+        "additionalProperties": false
+      },
+      "CollectionPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "maxItems": 50,
+            "items": {"$ref": "#/components/schemas/Collection"}
+          },
+          "next_cursor": {
+            "type": ["string", "null"],
+            "minLength": 1
+          }
+        },
+        "required": ["items", "next_cursor"],
+        "additionalProperties": false
+      },
+      "RevisionConflictError": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "enum": ["revision_conflict"]
+              },
+              "message": {
+                "type": "string",
+                "minLength": 1
+              },
+              "current_revision": {"$ref": "#/components/schemas/Revision"}
+            },
+            "required": ["code", "message", "current_revision"],
+            "additionalProperties": false
+          }
+        },
+        "required": ["error"],
+        "additionalProperties": false
+      }
+    },
+    "responses": {
+      "InvalidRequest": {
+        "description": "Malformed JSON or invalid fields or parameters.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "enum": ["invalid_request"]
+                    },
+                    "message": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": ["code", "message"],
+                  "additionalProperties": false
+                }
+              },
+              "required": ["error"],
+              "additionalProperties": false
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "The requested record or route does not exist.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "enum": ["record_not_found"]
+                    },
+                    "message": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": ["code", "message"],
+                  "additionalProperties": false
+                }
+              },
+              "required": ["error"],
+              "additionalProperties": false
+            }
+          }
+        }
+      },
+      "MethodNotAllowed": {
+        "description": "The method is unsupported on this route.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "enum": ["method_not_allowed"]
+                    },
+                    "message": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": ["code", "message"],
+                  "additionalProperties": false
+                }
+              },
+              "required": ["error"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "headers": {
+          "Allow": {
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "RequestTooLarge": {
+        "description": "The HTTP request body exceeds 262,144 bytes.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "enum": ["request_too_large"]
+                    },
+                    "message": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": ["code", "message"],
+                  "additionalProperties": false
+                }
+              },
+              "required": ["error"],
+              "additionalProperties": false
+            }
+          }
+        }
+      },
+      "UnsupportedMediaType": {
+        "description": "The request must use application/json.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "enum": ["unsupported_media_type"]
+                    },
+                    "message": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": ["code", "message"],
+                  "additionalProperties": false
+                }
+              },
+              "required": ["error"],
+              "additionalProperties": false
+            }
+          }
+        }
+      },
+      "PreconditionRequired": {
+        "description": "If-Match is required for the existing target.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "enum": ["precondition_required"]
+                    },
+                    "message": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": ["code", "message"],
+                  "additionalProperties": false
+                }
+              },
+              "required": ["error"],
+              "additionalProperties": false
+            }
+          }
+        }
+      },
+      "InternalError": {
+        "description": "An unexpected server failure occurred.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "enum": ["internal_error"]
+                    },
+                    "message": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": ["code", "message"],
+                  "additionalProperties": false
+                }
+              },
+              "required": ["error"],
+              "additionalProperties": false
+            }
+          }
+        }
+      },
+      "CreateConflict": {
+        "description": "The name is already in use or the addition exceeds capacity.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "enum": ["duplicate_name", "capacity_limit"]
+                    },
+                    "message": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": ["code", "message"],
+                  "additionalProperties": false
+                }
+              },
+              "required": ["error"],
+              "additionalProperties": false
+            }
+          }
+        }
+      },
+      "UpdateConflict": {
+        "description": "The supplied revision is stale or the name is already in use.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "oneOf": [
+                {"$ref": "#/components/schemas/RevisionConflictError"},
+                {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": ["duplicate_name"]
+                        },
+                        "message": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": ["code", "message"],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["error"],
+                  "additionalProperties": false
+                }
+              ]
+            }
+          }
+        }
+      },
+      "CaseCreateConflict": {
+        "description": "The supplied collection revision is stale, the case name is already in use, or the addition exceeds capacity.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "oneOf": [
+                {"$ref": "#/components/schemas/RevisionConflictError"},
+                {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": ["duplicate_name", "capacity_limit"]
+                        },
+                        "message": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": ["code", "message"],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["error"],
+                  "additionalProperties": false
+                }
+              ]
+            }
+          }
+        }
+      },
+      "RevisionConflict": {
+        "description": "The supplied revision is stale.",
+        "content": {
+          "application/json": {
+            "schema": {"$ref": "#/components/schemas/RevisionConflictError"}
+          }
+        }
+      }
+    }
+  }
+}
