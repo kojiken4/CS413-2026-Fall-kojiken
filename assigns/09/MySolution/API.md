@@ -105,8 +105,9 @@ its revision, and its case order unchanged.
 | Live records | 500 total, counting programs, collections, and their cases |
 
 An oversized source or description or an invalid page size receives `400`.
-An oversized request body receives `413`. A create or append that would
-exceed record capacity receives `409`.
+An oversized request body on a supported API method and route receives
+`413`, including on routes that do not read a body. A create or append
+that would exceed record capacity receives `409`.
 
 An initial list request omits `cursor`. It captures the ordered record
 representations as of that request, including case contents for collections.
@@ -133,7 +134,7 @@ revision conflict also contains `error.current_revision`. Code against
 | HTTP status | Code | Condition |
 | --- | --- | --- |
 | `400` | `invalid_request` | Malformed JSON, invalid fields, or invalid parameters, including malformed `If-Match` |
-| `404` | `record_not_found` | Unknown route or missing program, collection, or case |
+| `404` | `record_not_found` | Unknown route, including doubled-slash paths, or missing program, collection, or case |
 | `405` | `method_not_allowed` | Unsupported method on a known route. The response includes `Allow`. |
 | `409` | `duplicate_name` | Name already exists in its scope |
 | `409` | `revision_conflict` | Stale `If-Match` |

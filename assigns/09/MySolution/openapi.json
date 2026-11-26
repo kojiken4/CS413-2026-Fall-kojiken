@@ -25,6 +25,7 @@
             }
           },
           "405": {"$ref": "#/components/responses/MethodNotAllowed"},
+          "413": {"$ref": "#/components/responses/RequestTooLarge"},
           "500": {"$ref": "#/components/responses/InternalError"}
         }
       }
@@ -48,6 +49,7 @@
           },
           "400": {"$ref": "#/components/responses/InvalidRequest"},
           "405": {"$ref": "#/components/responses/MethodNotAllowed"},
+          "413": {"$ref": "#/components/responses/RequestTooLarge"},
           "500": {"$ref": "#/components/responses/InternalError"}
         }
       },
@@ -105,6 +107,7 @@
           "400": {"$ref": "#/components/responses/InvalidRequest"},
           "404": {"$ref": "#/components/responses/NotFound"},
           "405": {"$ref": "#/components/responses/MethodNotAllowed"},
+          "413": {"$ref": "#/components/responses/RequestTooLarge"},
           "500": {"$ref": "#/components/responses/InternalError"}
         }
       },
@@ -158,6 +161,7 @@
           "404": {"$ref": "#/components/responses/NotFound"},
           "405": {"$ref": "#/components/responses/MethodNotAllowed"},
           "409": {"$ref": "#/components/responses/RevisionConflict"},
+          "413": {"$ref": "#/components/responses/RequestTooLarge"},
           "428": {"$ref": "#/components/responses/PreconditionRequired"},
           "500": {"$ref": "#/components/responses/InternalError"}
         }
@@ -182,6 +186,7 @@
           },
           "400": {"$ref": "#/components/responses/InvalidRequest"},
           "405": {"$ref": "#/components/responses/MethodNotAllowed"},
+          "413": {"$ref": "#/components/responses/RequestTooLarge"},
           "500": {"$ref": "#/components/responses/InternalError"}
         }
       },
@@ -239,6 +244,7 @@
           "400": {"$ref": "#/components/responses/InvalidRequest"},
           "404": {"$ref": "#/components/responses/NotFound"},
           "405": {"$ref": "#/components/responses/MethodNotAllowed"},
+          "413": {"$ref": "#/components/responses/RequestTooLarge"},
           "500": {"$ref": "#/components/responses/InternalError"}
         }
       },
@@ -292,6 +298,7 @@
           "404": {"$ref": "#/components/responses/NotFound"},
           "405": {"$ref": "#/components/responses/MethodNotAllowed"},
           "409": {"$ref": "#/components/responses/RevisionConflict"},
+          "413": {"$ref": "#/components/responses/RequestTooLarge"},
           "428": {"$ref": "#/components/responses/PreconditionRequired"},
           "500": {"$ref": "#/components/responses/InternalError"}
         }
@@ -401,6 +408,7 @@
           "404": {"$ref": "#/components/responses/NotFound"},
           "405": {"$ref": "#/components/responses/MethodNotAllowed"},
           "409": {"$ref": "#/components/responses/RevisionConflict"},
+          "413": {"$ref": "#/components/responses/RequestTooLarge"},
           "428": {"$ref": "#/components/responses/PreconditionRequired"},
           "500": {"$ref": "#/components/responses/InternalError"}
         }

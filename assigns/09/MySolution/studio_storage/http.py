@@ -4,7 +4,7 @@ import json
 from typing import NoReturn
 
 from flask import Flask, Response, jsonify, request
-from werkzeug.exceptions import HTTPException
+from werkzeug.exceptions import HTTPException, RequestEntityTooLarge
 
 from .errors import ApiError, invalid_request
 from .models import Collection, Program
@@ -55,7 +55,21 @@ def _error_response(error: ApiError) -> Response:
 def create_app(store: Store | None = None) -> Flask:
     app = Flask(__name__, static_folder=None)
     app.config.update(MAX_CONTENT_LENGTH=MAX_BODY_BYTES, PROVIDE_AUTOMATIC_OPTIONS=False)
+    app.url_map.merge_slashes = False
     service = StorageService(store if store is not None else MemoryStore())
+
+    @app.before_request
+    def enforce_api_body_limit() -> None:
+        if request.url_rule is None or not request.path.startswith("/api/v1/"):
+            return
+        if request.content_length is not None:
+            if request.content_length > MAX_BODY_BYTES:
+                raise RequestEntityTooLarge()
+        elif request.environ.get("wsgi.input_terminated"):
+            # Read one extra byte to distinguish a full body from a truncated one.
+            request.max_content_length = MAX_BODY_BYTES + 1
+            if len(request.get_data()) > MAX_BODY_BYTES:
+                raise RequestEntityTooLarge()
 
     @app.errorhandler(ApiError)
     def handle_api_error(error: ApiError) -> Response:
@@ -95,7 +109,7 @@ def create_app(store: Store | None = None) -> Flask:
     def update_program(program_id: str) -> Response:
         program_id = record_id(program_id)
         if_match = request.headers.get("If-Match")
-        # Check preconditions before reading the body. The write checks again
+        # Check preconditions before parsing the payload. The write checks again
         # under the same lock as the mutation in case another caller won.
         service.check_program_revision(program_id, if_match)
         program = service.update_program(program_id, if_match, program_write(_read_json()))

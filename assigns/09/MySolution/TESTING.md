@@ -30,8 +30,8 @@ Tests create their data through the public HTTP interface.
 
 | Behavior | Test names |
 | --- | --- |
-| Health, routing, and required status codes | `test_health_missing_route_and_unsupported_method` |
-| Content types, malformed JSON, byte limits, and redacted server errors | `test_content_type_malformed_json_and_body_limit`<br>`test_internal_error_is_json_and_does_not_expose_details` |
+| Health, routing, and required status codes, including doubled-slash paths | `test_health_missing_route_and_unsupported_method` |
+| Content types, malformed JSON, declared-length and chunked body limits, and redacted server errors | `test_content_type_malformed_json_and_body_limit`<br>`test_internal_error_is_json_and_does_not_expose_details` |
 | Program and collection CRUD, UTC timestamps, version fields, and metadata-only collection edits | `test_program_crud_preserves_source_and_sets_version_fields`<br>`test_collection_crud_includes_cases_and_updates_only_metadata` |
 | Case add, edit, and delete preserve IDs and remaining order, with the parent ETag updated | `test_case_mutations_keep_ids_and_order_and_advance_the_parent_revision` |
 | Missing, wrongly typed, blank, oversized, and unknown fields, including invalid expectations | `test_validation_rejects_invalid_fields_and_accepts_exact_field_limits`<br>`test_validation_rejects_invalid_collection_case_and_expectation_fields` |

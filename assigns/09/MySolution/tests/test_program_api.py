@@ -44,6 +44,9 @@ class ProgramApiTests(TestCase):
         self.assertEqual(health.mimetype, "application/json")
         self.assertEqual(health.get_json(), {"status": "ok", "version": "1.0"})
         self.assert_error(self.client.get("/api/v1/missing"), 404, "record_not_found")
+        doubled_slash = self.client.get("/api/v1//health")
+        self.assert_error(doubled_slash, 404, "record_not_found")
+        self.assertNotIn("Location", doubled_slash.headers)
         unsupported = self.client.patch(PROGRAMS)
         self.assert_error(unsupported, 405, "method_not_allowed")
         self.assertTrue({"GET", "POST"} <= set(unsupported.headers["Allow"].split(", ")))
@@ -104,6 +107,29 @@ class ProgramApiTests(TestCase):
         self.assert_error(oversized, 413, "request_too_large")
         accepted = self.client.post(PROGRAMS, data=exact, content_type="application/json; charset=utf-8")
         self.assertEqual(accepted.status_code, 201)
+
+        streamed = {"HTTP_TRANSFER_ENCODING": "chunked", "CONTENT_LENGTH": "", "wsgi.input_terminated": True}
+        exact_stream = b'{"name":"Streamed","source":"1"}'.ljust(262_144, b" ")
+        accepted = self.client.post(
+            PROGRAMS, data=exact_stream, content_type="application/json", environ_overrides=streamed,
+        )
+        self.assertEqual(accepted.status_code, 201)
+        # A valid JSON prefix at the limit must not hide an extra byte.
+        for framing, overrides in (("content-length", {}), ("chunked", streamed)):
+            with self.subTest(framing=framing):
+                body = exact_stream + b" "
+                oversized = self.client.post(
+                    PROGRAMS, data=body, content_type="application/json", environ_overrides=overrides,
+                )
+                self.assert_error(oversized, 413, "request_too_large")
+                oversized = self.client.get("/api/v1/health", data=body, environ_overrides=overrides)
+                self.assert_error(oversized, 413, "request_too_large")
+
+        program = accepted.get_json()["program"]
+        path = f"{PROGRAMS}/{program['id']}"
+        oversized = self.client.delete(path, data=exact_stream + b" ", headers={"If-Match": '"1"'})
+        self.assert_error(oversized, 413, "request_too_large")
+        self.assertEqual(self.client.get(path).get_json(), {"program": program})
 
     def test_validation_rejects_invalid_fields_and_accepts_exact_field_limits(self):
         for payload in (
