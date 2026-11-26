@@ -1,8 +1,24 @@
-# AI assistance
+# AI assistance transcript
 
-**Tool** OpenAI Codex in the Codex desktop app. Codex used workspace tools to
-inspect and edit the repository and ran verification through Python unittest,
-Flask, and Playwright.
+## AI use and manual review
+
+I used OpenAI Codex in the Codex desktop app to review the assignment, plan
+the work, and help implement and test the in-memory storage service and
+LAMBDA-studio integration. Before making each commit, I manually reviewed
+and audited all changes for that milestone, including the source code,
+tests, and documentation. I checked the changes against the assignment
+requirements and confirmed they were ready before committing. I made the
+commits myself and told Codex when to move on to the next step.
+
+## Important prompts and suggestions
+
+- I asked Codex to explain the assignment and divide the required work into
+  steps that I could review and commit separately.
+- I asked Codex to stay within the assignment scope, explain each step before
+  implementing it, and pause with a suggested commit message so I could audit
+  the changes.
+
+## Implementation and testing
 
 | Checkpoint | Significant assistance |
 | --- | --- |
@@ -14,16 +30,13 @@ Flask, and Playwright.
 | Collection runs | Packaged the existing Assign07 runtime, implemented the interpretation relay and result display, and added integration tests against real LAMBDA3. |
 | Final verification | Prepared the submission documentation and checked setup, tests, and data clearing from a standalone copy. |
 
-## Review process
+My review covered the REST contract and schemas, the in-memory storage
+behavior, the revision checks and cursor snapshots, and the studio
+workflows. I checked that the studio ran saved cases through the separate
+LAMBDA3 service and that results stayed tied to the case ID and source
+snapshot used for the run.
 
-I directed the work one checkpoint at a time and kept each implementation
-step separate in Git. Codex described the scope before each step, reported
-what it verified, and left the changes uncommitted with a suggested commit
-message. The repository history records the first six checkpoints.
-
-Verification compared the route table and schemas with the assignment,
-exercised the service through its public HTTP interface, and tested the
-browser workflows against local services. The integration tests checked
-LAMBDA3 outcomes and verified that edits made during a run did not change
-the displayed result's source. [TESTING.md](TESTING.md) records the final
-checks and their observed results.
+The automated checks supported my manual review. All 21 API tests and 9
+browser tests passed in a standalone copy. The restart check confirmed that
+saved records were cleared and cursor tokens became invalid. See
+[TESTING.md](TESTING.md) for the test coverage and observed results.
