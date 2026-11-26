@@ -89,9 +89,15 @@
           <div class="actions case-actions">
             <button id="add-case" type="button">Add case</button>
             <button id="reload-collection" class="secondary" type="button">Reload collection</button>
+            <button id="run-collection" class="secondary" type="button">Run collection</button>
           </div>
           <p id="case-list-status" class="muted">No cases saved yet.</p>
           <ul id="case-list" class="record-list" aria-label="Saved cases"></ul>
+          <section id="collection-run" class="collection-run" aria-labelledby="run-heading" hidden>
+            <h3 id="run-heading">Collection run</h3>
+            <p id="run-status" role="status"></p>
+            <ol id="run-results" aria-label="Case results"></ol>
+          </section>
           <form id="case-form" class="case-form" hidden>
             <fieldset id="case-fields">
               <h3 id="case-form-heading">New test case</h3>

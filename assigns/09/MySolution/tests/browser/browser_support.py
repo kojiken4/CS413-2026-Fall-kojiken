@@ -19,7 +19,7 @@ class StudioBrowserTestCase(TestCase):
         cls.addClassCleanup(cls.browser.close)
 
     def setUp(self):
-        server = make_server("127.0.0.1", 0, create_app(), threaded=True)
+        server = make_server("127.0.0.1", 0, self.make_app(), threaded=True)
         worker = Thread(target=server.serve_forever, name="studio-test-server", daemon=True)
         worker.start()
         self.addCleanup(server.server_close)
@@ -28,6 +28,9 @@ class StudioBrowserTestCase(TestCase):
         self.url = f"http://127.0.0.1:{server.server_port}"
         self.errors = []
         self.addCleanup(self.assertEqual, self.errors, [])
+
+    def make_app(self):
+        return create_app()
 
     def page_in_new_context(self):
         context = self.browser.new_context()

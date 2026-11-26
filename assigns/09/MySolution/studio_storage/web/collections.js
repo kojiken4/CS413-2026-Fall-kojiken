@@ -1,4 +1,5 @@
 import { appendCase, createCollection, deleteCase, getCollection, listCollections, StorageError, updateCase } from "./storage.js";
+import { runCollection } from "./collection_run.js";
 
 const collectionForm = document.querySelector("#collection-form");
 const collectionName = collectionForm.elements.name;
@@ -15,6 +16,7 @@ const conflictNotice = document.querySelector("#collection-conflict");
 const caseError = document.querySelector("#case-error");
 const addButton = document.querySelector("#add-case");
 const reloadButton = document.querySelector("#reload-collection");
+const runButton = document.querySelector("#run-collection");
 const caseList = document.querySelector("#case-list");
 const caseListStatus = document.querySelector("#case-list-status");
 const caseForm = document.querySelector("#case-form");
@@ -31,6 +33,7 @@ let editingCase = null;
 let baseline = readDraft();
 let busy = false;
 let conflict = false;
+let running = false;
 
 function readDraft() {
   return {
@@ -77,6 +80,7 @@ function renderStatus() {
   saveButton.disabled = conflict || (editingCase !== null && !dirty);
   deleteButton.disabled = conflict;
   addButton.disabled = busy || conflict;
+  runButton.disabled = busy || running || !saved?.collection.cases.length;
   conflictNotice.hidden = !conflict;
 }
 
@@ -209,6 +213,17 @@ collectionList.addEventListener("click", (event) => {
 reloadButton.addEventListener("click", () => {
   if (!confirmDiscard()) return;
   void perform(async () => showCollection(await getCollection(saved.collection.id), editingCase?.id));
+});
+runButton.addEventListener("click", async () => {
+  const collectionId = saved.collection.id;
+  running = true;
+  renderStatus();
+  try {
+    await runCollection(collectionId);
+  } finally {
+    running = false;
+    renderStatus();
+  }
 });
 
 addButton.addEventListener("click", () => {

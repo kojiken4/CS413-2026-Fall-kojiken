@@ -101,6 +101,48 @@ h2 {
   font-size: 1.05rem;
 }
 
+.collection-run {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow-wrap: anywhere;
+}
+
+.collection-run h3 {
+  margin-bottom: 0.4rem;
+  font-size: 1.05rem;
+}
+
+.collection-run ol {
+  padding-inline-start: 1.5rem;
+  margin-block: 0.5rem 0;
+}
+
+.collection-run ol:empty { display: none; }
+
+.collection-run summary {
+  padding-block: 0.25rem;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.collection-run summary:focus-visible {
+  outline: 3px solid #2374d8;
+  outline-offset: 2px;
+}
+
+.collection-run pre {
+  margin-block: 0.5rem;
+  padding: 0.5rem;
+  border-radius: var(--radius);
+  background: #f7f9fd;
+  white-space: pre-wrap;
+}
+
+.run-pass { color: #18603c; }
+.run-fail { color: #8c2822; }
+
 button {
   min-height: 2.5rem;
   padding: 0.45rem 0.75rem;
